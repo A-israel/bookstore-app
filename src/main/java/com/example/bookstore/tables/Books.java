@@ -10,10 +10,12 @@ public class Books {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int bid;
+    @Column(length = 1000)
     private String coverUrl;
     private String title;
     private String author;
     private String genre;
+    @Column(name = "price", columnDefinition = "DECIMAL(10,2)")
     private double price;
     private int ratings;
     @Column(columnDefinition = "TEXT")

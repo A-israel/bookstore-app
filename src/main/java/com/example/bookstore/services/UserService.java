@@ -17,7 +17,6 @@ public class UserService {
     private final PasswordHash hash;
     private final JwtUserTokens jwtUtils;
 
-    // Corrected Public Constructor
     public UserService(UserRepository rep, PasswordHash hash, JwtUserTokens jwtUtils) {
         this.rep = rep;
         this.hash = hash;
@@ -29,9 +28,10 @@ public class UserService {
         u.setFirstname(ureq.getFirstname());
         u.setLastname(ureq.getLastname());
         u.setEmail(ureq.getEmail());
-        // FIX: Pass the password from ureq into the hash
+
         u.setPassword(hash.getHashed(ureq.getPassword()));
         u.setShipping_address(ureq.getShipping_address());
+        u.setPayment_method(ureq.getPayment_method());
         u.setRole("USER");
         return rep.save(u) != null;
     }
@@ -45,7 +45,6 @@ public class UserService {
         return null;
     }
 
-    // Refactored for Stateless JWT (No sessions)
     public boolean changeUser(UserReq ureq) {
         Users old = rep.findUsersByEmail(ureq.getEmail());
         if (old == null) return false;
@@ -53,9 +52,21 @@ public class UserService {
         old.setFirstname(ureq.getFirstname());
         old.setLastname(ureq.getLastname());
         old.setShipping_address(ureq.getShipping_address());
-        // Always hash passwords on update!
         old.setPassword(hash.getHashed(ureq.getPassword()));
+        old.setPayment_method(ureq.getPayment_method());
 
         return rep.save(old) != null;
+    }
+    public boolean deleteUser(String email) {
+
+        Users userToDelete = rep.findUsersByEmail(email);
+
+        if (userToDelete != null) {
+
+            rep.delete(userToDelete);
+            return true;
+        }
+
+        return false;
     }
 }

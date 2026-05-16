@@ -20,6 +20,7 @@ public class Users {
     @Column(name = "shipping")
     private String shipping_address;
     private String role;
+    private String Payment_method;
 
     public int getUid() {
         return uid;
@@ -75,5 +76,13 @@ public class Users {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getPayment_method() {
+        return Payment_method;
+    }
+
+    public void setPayment_method(String payment_method) {
+        Payment_method = payment_method;
     }
 }

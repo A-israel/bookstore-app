@@ -3,6 +3,7 @@ package com.example.bookstore.controller;
 import com.example.bookstore.dto.request.LoginReq;
 import com.example.bookstore.dto.request.UserReq;
 import com.example.bookstore.services.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -51,11 +52,15 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
     }
 
-    // Delete is now handled via the UserService without needing a session
+
     @DeleteMapping("/delete/{email}")
     public ResponseEntity<?> deleteUser(@PathVariable String email) {
-        // You can implement this in UserService to find and delete by email
-        // Logic: userservice.deleteUserByEmail(email);
-        return ResponseEntity.ok("User account deleted");
+        boolean isDeleted = userservice.deleteUser(email);
+
+        if (isDeleted) {
+            return ResponseEntity.ok("User account with email " + email + " has been deleted.");
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
     }
 }

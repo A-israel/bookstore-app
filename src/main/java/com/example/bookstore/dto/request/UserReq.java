@@ -10,6 +10,7 @@ public class UserReq {
     private String password;
     private String shipping_address;
     private String role;
+    private String Payment_method;
 
     public String getFirstname() {
         return firstname;
@@ -57,5 +58,13 @@ public class UserReq {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getPayment_method() {
+        return Payment_method;
+    }
+
+    public void setPayment_method(String payment_method) {
+        Payment_method = payment_method;
     }
 }

@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 import java.io.IOException;
 
 @Component
-public class JwtFilter extends OncePerRequestFilter { // Fixed: Extends OncePerRequestFilter
+public class JwtFilter extends OncePerRequestFilter {
 
     private final CustomUserDetails cdetails;
     private final JwtUserTokens utokens;
@@ -33,33 +33,26 @@ public class JwtFilter extends OncePerRequestFilter { // Fixed: Extends OncePerR
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // 1. Get the JWT Token from Header
         String token = getJwtFromRequest(request);
 
-        // 2. Validate Token and Authenticate
         if (StringUtils.hasText(token) && utokens.validateToken(token)) {
             String username = utokens.getUsernameFromTokens(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // 3. Load UserDetails from database
                 UserDetails userDetails = cdetails.loadUserByUsername(username);
 
-                // 4. Create Authentication Token
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
                         userDetails.getAuthorities()
                 );
 
-                // Link request details to authentication
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // 5. Set Security Context
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
 
-        // 6. Continue the filter chain
         filterChain.doFilter(request, response);
     }
 
