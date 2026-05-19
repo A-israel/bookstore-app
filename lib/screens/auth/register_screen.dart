@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../services/auth_service.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -128,12 +130,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: isLoading ? null : () {
-                            // TODO: connect to backend register API
+                          // Update the onPressed method in register_screen.dart:
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                            final name = nameController.text.trim();
+                            final email = emailController.text.trim();
+                            final password = passwordController.text.trim();
+                            final confirmPassword = confirmPasswordController.text.trim();
+
+                            if (name.isEmpty || email.isEmpty || password.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('All fields are required')),
+                              );
+                              return;
+                            }
+
+                            if (password != confirmPassword) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
+                              );
+                              return;
+                            }
+
                             setState(() => isLoading = true);
-                            Future.delayed(const Duration(seconds: 1), () {
-                              setState(() => isLoading = false);
-                            });
+
+                            final result = await AuthService.register(
+                              fullname: name,
+                              email: email,
+                              password: password,
+                            );
+
+                            setState(() => isLoading = false);
+
+                            if (result['success']) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Account Created! Please Login.'), backgroundColor: Colors.green),
+                              );
+                              // Pop back to login screen
+                              Navigator.pop(context);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(result['message'] ?? 'Registration failed'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4F46E5),

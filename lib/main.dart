@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/catalog/home_screen.dart';
+import '../../models/book_model.dart';
+import '../../services/api_service.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -10,6 +12,8 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
+
 
   @override
   Widget build(BuildContext context) {

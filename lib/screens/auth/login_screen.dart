@@ -1,6 +1,9 @@
+import '../../services/auth_service.dart';
 import '../auth/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../catalog/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,6 +14,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // these controllers read what the user types
+  final _storage = const FlutterSecureStorage();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool isLoading = false;
@@ -153,12 +157,52 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: isLoading ? null : () {
-                            // TODO: connect to backend login API later
+                          // Update the onPressed method in login_screen.dart:
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                            final email = emailController.text.trim();
+                            final password = passwordController.text.trim();
+
+                            if (email.isEmpty || password.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please fill in all fields')),
+                              );
+                              return;
+                            }
+
                             setState(() => isLoading = true);
-                            Future.delayed(const Duration(seconds: 1), () {
-                              setState(() => isLoading = false);
-                            });
+
+                            // Connect directly to localhost:8080/api/auth/login
+                            final result = await AuthService.login(email, password);
+
+                            setState(() => isLoading = false);
+
+                            if (result['success']) {
+                              // Save the returned JWT token securely on Windows
+                              await _storage.write(key: 'jwt_token', value: result['token']);
+
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Login Successful 🎉'),
+                                      backgroundColor: Colors.green
+                                  ),
+                                );
+
+                                // Route to the Book Catalog main screen
+                                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+                              }
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(result['message'] ?? 'Invalid email or password'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4F46E5),
