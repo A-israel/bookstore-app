@@ -1,18 +1,21 @@
 package com.example.bookstore.tables;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@Table(name = "reviews")
+@Table(name = "cart")
 @Entity
 public class CartItems {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uid")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Users users;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "bid")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Books books;
     private int quantity;
 

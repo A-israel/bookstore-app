@@ -26,8 +26,10 @@ public class DataLoader implements CommandLineRunner {
             bimp.importBooksBySubject("action");
             bimp.importBooksBySubject("sci-fi");
             bimp.importBooksBySubject("adventure");
-            bimp.importBooksBySubject("mystery");
+            bimp.importBooksBySubject("poetry");
             bimp.importBooksBySubject("horror");
+            bimp.importBooksBySubject("gospel");
+            bimp.importBooksBySubject("education");
 
 
 

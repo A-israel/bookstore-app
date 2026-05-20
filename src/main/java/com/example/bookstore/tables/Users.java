@@ -10,9 +10,8 @@ public class Users {
     private int uid;
 
     @Column(name = "fname")
-    private String firstname;
-    @Column(name = "lname")
-    private String lastname;
+    private String fullname;
+
     @Column(name = "email", unique = true)
     private String email;
     @Column(name = "paswrd")
@@ -30,20 +29,12 @@ public class Users {
         this.uid = uid;
     }
 
-    public String getFirstname() {
-        return firstname;
+    public String getFullname() {
+        return fullname;
     }
 
-    public void setFirstname(String firstname) {
-        this.firstname = firstname;
-    }
-
-    public String getLastname() {
-        return lastname;
-    }
-
-    public void setLastname(String lastname) {
-        this.lastname = lastname;
+    public void setFullname(String fullname) {
+        this.fullname = fullname;
     }
 
     public String getEmail() {

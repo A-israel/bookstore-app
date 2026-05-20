@@ -8,37 +8,35 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+
 @Service
 public class CustomUserDetails implements UserDetailsService {
-    private UserRepository urepo;
+    private final UserRepository urepo;
 
-    public CustomUserDetails(UserRepository urepo){
-
+    public CustomUserDetails(UserRepository urepo) {
         this.urepo = urepo;
     }
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        if (username == null && username.trim().isEmpty()){
-
-            throw new UsernameNotFoundException("Username not found!!!");
-
+        // Fix the logical bug to handle empty/null text transfers correctly
+        if (username == null || username.trim().isEmpty()) {
+            throw new UsernameNotFoundException("Email input cannot be empty.");
         }
 
         Users u = urepo.findUsersByEmail(username);
 
-        if (u == null){
-            throw new RuntimeException("Something is wrong");
+        // Throw a Spring-compliant exception instead of a generic RuntimeException
+        if (u == null) {
+            throw new UsernameNotFoundException("No user found with email: " + username);
         }
 
-        UserDetails udetails = User.builder()
+        // Build the authenticated principal profile using your system parameters
+        return User.builder()
                 .username(u.getEmail())
                 .password(u.getPassword())
-                .roles(u.getRole())
+                .roles(u.getRole()) // Checks against values like "USER" or "ADMIN"
                 .build();
-
-
-
-        return udetails;
     }
-
 }

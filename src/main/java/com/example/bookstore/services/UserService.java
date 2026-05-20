@@ -25,10 +25,8 @@ public class UserService {
 
     public boolean register(UserReq ureq) {
         Users u = new Users();
-        u.setFirstname(ureq.getFirstname());
-        u.setLastname(ureq.getLastname());
+        u.setFullname(ureq.getFullname());
         u.setEmail(ureq.getEmail());
-
         u.setPassword(hash.getHashed(ureq.getPassword()));
         u.setShipping_address(ureq.getShipping_address());
         u.setPayment_method(ureq.getPayment_method());
@@ -49,8 +47,7 @@ public class UserService {
         Users old = rep.findUsersByEmail(ureq.getEmail());
         if (old == null) return false;
 
-        old.setFirstname(ureq.getFirstname());
-        old.setLastname(ureq.getLastname());
+       old.setFullname(ureq.getFullname());
         old.setShipping_address(ureq.getShipping_address());
         old.setPassword(hash.getHashed(ureq.getPassword()));
         old.setPayment_method(ureq.getPayment_method());

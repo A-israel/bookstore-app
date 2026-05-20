@@ -66,7 +66,7 @@ public class JwtUserTokens {
 
 
 
-    public boolean validateToken(String token){
+    public boolean validateToken(String token, UserDetails userDetails){
         try{
 
             if(token == null || token.trim().isEmpty()){

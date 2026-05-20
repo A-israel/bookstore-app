@@ -3,6 +3,7 @@ package com.example.bookstore.tables;
 import jakarta.persistence.*;
 
 import java.sql.Date;
+import java.time.LocalDateTime;
 
 @Table(name = "reviews")
 @Entity
@@ -18,6 +19,7 @@ public class Reviews {
     private Users users;
     private int rating;
     private String comments;
+    private LocalDateTime createdAt;
 
     public int getId() {
         return id;
@@ -57,5 +59,13 @@ public class Reviews {
 
     public void setComments(String comments) {
         this.comments = comments;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

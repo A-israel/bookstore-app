@@ -4,28 +4,20 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UserReq {
-    private String firstname;
-    private String lastname;
+    private String fullname;
+
     private String  email;
     private String password;
     private String shipping_address;
     private String role;
     private String Payment_method;
 
-    public String getFirstname() {
-        return firstname;
+    public String getFullname() {
+        return fullname;
     }
 
-    public void setFirstname(String firstname) {
-        this.firstname = firstname;
-    }
-
-    public String getLastname() {
-        return lastname;
-    }
-
-    public void setLastname(String lastname) {
-        this.lastname = lastname;
+    public void setFullname(String fullname) {
+        this.fullname = fullname;
     }
 
     public String getEmail() {

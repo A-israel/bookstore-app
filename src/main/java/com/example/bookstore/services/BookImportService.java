@@ -20,7 +20,7 @@ public class BookImportService {
 
     public void importBooksBySubject(String subject) {
        
-        String url = "https://openlibrary.org/subjects/" + subject.toLowerCase() + ".json?limit=2";
+        String url = "https://openlibrary.org/subjects/" + subject.toLowerCase() + ".json?limit=10";
 
         try {
             String jsonString = restTemplate.getForObject(url, String.class);
@@ -51,7 +51,7 @@ public class BookImportService {
                     }
 
                     book.setPrice(14.99 + (Math.random() * 10));
-                    book.setRatings(4);
+                    book.setRatings(4.6);
                     book.setStock(15);
                     book.setReleaseDate(LocalDate.now());
 

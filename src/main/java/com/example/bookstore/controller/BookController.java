@@ -11,7 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/books")
-@CrossOrigin("*")
+@CrossOrigin(origins = "http://localhost", allowedHeaders = "*")
 public class BookController {
 
     private final BookRepository bookRepository;
@@ -20,8 +20,13 @@ public class BookController {
         this.bookRepository = bookRepository;
     }
 
-    @GetMapping
-    public Page<Books> getBooks(Pageable pageable) {
-        return bookRepository.findAll(pageable);
+    @GetMapping("/all")
+    public List<Books> getBooks() {
+        return bookRepository.findAll();
+    }
+    @GetMapping("/search")
+    public List<Books> searchBooks(@RequestParam("query") String keyword) {
+
+        return bookRepository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCaseOrderByGenre(keyword, keyword, keyword);
     }
 }

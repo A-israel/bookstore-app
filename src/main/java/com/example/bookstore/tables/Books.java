@@ -17,7 +17,7 @@ public class Books {
     private String genre;
     @Column(name = "price", columnDefinition = "DECIMAL(10,2)")
     private double price;
-    private int ratings;
+    private double ratings;
     @Column(columnDefinition = "TEXT")
     private String description;
     private int stock;
@@ -72,11 +72,11 @@ public class Books {
         this.price = price;
     }
 
-    public int getRatings() {
+    public double getRatings() {
         return ratings;
     }
 
-    public void setRatings(int ratings) {
+    public void setRatings(double ratings) {
         this.ratings = ratings;
     }
 

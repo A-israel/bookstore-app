@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
-@Table(name = "reviews")
+@Table(name = "wishlist")
 @Entity
 public class Wishlist {
     @Id
@@ -18,5 +18,35 @@ public class Wishlist {
     private Books books;
     private LocalDateTime addedat;
 
+    public int getId() {
+        return id;
+    }
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public Users getUsers() {
+        return users;
+    }
+
+    public void setUsers(Users users) {
+        this.users = users;
+    }
+
+    public Books getBooks() {
+        return books;
+    }
+
+    public void setBooks(Books books) {
+        this.books = books;
+    }
+
+    public LocalDateTime getAddedat() {
+        return addedat;
+    }
+
+    public void setAddedat(LocalDateTime addedat) {
+        this.addedat = addedat;
+    }
 }
