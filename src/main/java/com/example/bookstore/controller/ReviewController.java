@@ -16,7 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reviews")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
+@CrossOrigin("*")
 public class ReviewController {
 
     private final ReviewRepository reviewRepository;
@@ -59,10 +59,17 @@ public class ReviewController {
         try {
             Integer bid = (Integer) payload.get("bid");
             Integer rating = (Integer) payload.get("rating");
-            String comment = (String) payload.get("comment");
+            String comment = (String) payload.get("comments");
 
             String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            if (email == null || email.equals("anonymousUser")) {
+                return ResponseEntity.status(401).body("Error: User authentication context is missing or invalid. Please re-login. ❌");
+            }
+
             Users user = userRepository.findUsersByEmail(email);
+            if (user == null) {
+                return ResponseEntity.status(404).body("Error: No registered user found matching account email: " + email + " ❌");
+            }
             Books book = bookRepository.findById(bid).orElseThrow(() -> new RuntimeException("Book details target missing"));
 
             Reviews review = new Reviews();

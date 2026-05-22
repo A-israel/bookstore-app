@@ -36,10 +36,13 @@ public class UserService {
 
     public String login(LoginReq lreq) {
         Users user = rep.findUsersByEmail(lreq.getEmail());
+
         BCryptPasswordEncoder checker = new BCryptPasswordEncoder();
+
         if (user != null && checker.matches(lreq.getPassword(), user.getPassword())) {
-            return jwtUtils.generateTokenUsername(user.getEmail());
+            return jwtUtils.generateToken(user.getEmail());
         }
+
         return null;
     }
 
