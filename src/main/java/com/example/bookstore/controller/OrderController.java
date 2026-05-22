@@ -40,7 +40,7 @@ public class OrderController {
     // ── 2. TRANSACTIONAL CHECKOUT OPERATION ──
     @PostMapping("/checkout")
     @Transactional
-    public ResponseEntity<?> checkoutCart(@RequestParam("shippingAddress") String shippingAddress) {
+    public ResponseEntity<?> checkoutCart() {
         try {
             // Pull all cart contents belonging to the current active profile user (ID: 1)
             List<CartItems> activeCart = cartRepository.findByUsersUid(1);
@@ -67,10 +67,10 @@ public class OrderController {
             order.setDate(LocalDateTime.now()); // Maps 'date'
             order.setStatus("Processing"); // Maps 'status'
             order.setTotal_price(overallTotal); // Maps exact 'total_price' double field
-            order.setDeliveryStatus(DeliveryStatus.PENDING); // Maps enum constraint safely
-            order.setShippingAddress(shippingAddress); // Maps address property
-            order.setTrackingNumber("BKSTR-" + System.currentTimeMillis()); // Maps tracking string
-            order.setEstimatedDeliveryDate(LocalDateTime.now().plusDays(4)); // Maps delivery date
+            order.setDelivery_status(DeliveryStatus.PENDING); // Maps enum constraint safely
+            order.setShipping_address("Aptech Maryland"); // Maps address property
+            order.setTracking_number("BKSTR-" + System.currentTimeMillis()); // Maps tracking string
+            order.setEstimated_delivery_date(LocalDateTime.now().plusDays(4)); // Maps delivery date
 
             // Transform each temporary item row into a historical snapshot record
             List<OrderItems> processingItems = new ArrayList<>();

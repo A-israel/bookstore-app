@@ -41,12 +41,12 @@ public class DeliveryController {
         try {
             // Read status string from JSON body payload and map to stable Enum values
             DeliveryStatus newStatus = DeliveryStatus.valueOf(payload.get("status").toUpperCase());
-            order.setDeliveryStatus(newStatus);
+            order.setDelivery_status(newStatus);
 
             // Automatically generate a tracking number if status advances to SHIPPED
-            if (newStatus == DeliveryStatus.SHIPPED && (order.getTrackingNumber() == null || order.getTrackingNumber().isEmpty())) {
-                order.setTrackingNumber("BKSTR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-                order.setEstimatedDeliveryDate(LocalDateTime.now().plusDays(4)); // 4-day shipping target estimation
+            if (newStatus == DeliveryStatus.SHIPPED && (order.getTracking_number() == null || order.getTracking_number().isEmpty())) {
+                order.setTracking_number("BKSTR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                order.setEstimated_delivery_date(LocalDateTime.now().plusDays(4)); // 4-day shipping target estimation
             }
 
             Orders updatedOrder = orderRepository.save(order);

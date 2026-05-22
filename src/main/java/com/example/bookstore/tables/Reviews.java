@@ -18,6 +18,7 @@ public class Reviews {
     @JoinColumn(name = "uid")
     private Users users;
     private int rating;
+
     private String comments;
     private LocalDateTime createdAt;
 

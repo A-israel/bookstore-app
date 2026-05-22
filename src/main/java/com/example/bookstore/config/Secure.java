@@ -37,6 +37,8 @@ public class Secure {
                         .requestMatchers("/api/books", "/api/books/**").permitAll()
                         .requestMatchers("/api/cart","/api/cart/**").permitAll()
                         .requestMatchers("/api/wishlist","/api/wishlist/**").permitAll()
+                        .requestMatchers("/api/orders","/api/orders/**").permitAll()
+                        .requestMatchers("/api/reviews","/api/reviews/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

@@ -23,11 +23,11 @@ public class Orders {
     @JsonManagedReference
     private List<OrderItems> orderItems;
     @Enumerated(EnumType.STRING)
-    private DeliveryStatus deliveryStatus = DeliveryStatus.PENDING; // Default status
+    private DeliveryStatus delivery_status = DeliveryStatus.PENDING; // Default status
 
-    private String trackingNumber;
-    private String shippingAddress;
-    private java.time.LocalDateTime estimatedDeliveryDate;
+    private String tracking_number;
+    private String shipping_address;
+    private java.time.LocalDateTime estimated_delivery_date;
 
     public int getId() {
         return id;
@@ -77,35 +77,35 @@ public class Orders {
         this.orderItems = orderItems;
     }
 
-    public DeliveryStatus getDeliveryStatus() {
-        return deliveryStatus;
+    public DeliveryStatus getDelivery_status() {
+        return delivery_status;
     }
 
-    public void setDeliveryStatus(DeliveryStatus deliveryStatus) {
-        this.deliveryStatus = deliveryStatus;
+    public void setDelivery_status(DeliveryStatus delivery_status) {
+        this.delivery_status = delivery_status;
     }
 
-    public String getTrackingNumber() {
-        return trackingNumber;
+    public String getTracking_number() {
+        return tracking_number;
     }
 
-    public void setTrackingNumber(String trackingNumber) {
-        this.trackingNumber = trackingNumber;
+    public void setTracking_number(String tracking_number) {
+        this.tracking_number = tracking_number;
     }
 
-    public String getShippingAddress() {
-        return shippingAddress;
+    public String getShipping_address() {
+        return shipping_address;
     }
 
-    public void setShippingAddress(String shippingAddress) {
-        this.shippingAddress = shippingAddress;
+    public void setShipping_address(String shipping_address) {
+        this.shipping_address = shipping_address;
     }
 
-    public LocalDateTime getEstimatedDeliveryDate() {
-        return estimatedDeliveryDate;
+    public LocalDateTime getEstimated_delivery_date() {
+        return estimated_delivery_date;
     }
 
-    public void setEstimatedDeliveryDate(LocalDateTime estimatedDeliveryDate) {
-        this.estimatedDeliveryDate = estimatedDeliveryDate;
+    public void setEstimated_delivery_date(LocalDateTime estimated_delivery_date) {
+        this.estimated_delivery_date = estimated_delivery_date;
     }
 }
