@@ -2,10 +2,13 @@ package com.example.bookstore.controller;
 
 import com.example.bookstore.dto.request.LoginReq;
 import com.example.bookstore.dto.request.UserReq;
+import com.example.bookstore.repositories.UserRepository;
 import com.example.bookstore.services.UserService;
+import com.example.bookstore.tables.Users;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -17,9 +20,11 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userservice;
+    private final UserRepository urepo;
 
-    public UserController(UserService uservice) {
+    public UserController(UserService uservice,UserRepository urepo) {
         this.userservice = uservice;
+        this.urepo= urepo;
     }
 
     @PostMapping("/register")
@@ -62,5 +67,34 @@ public class UserController {
         }
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+    }
+    // ── FETCH CURRENT LOGGED-IN USER PROFILE ──
+    @GetMapping("/profile")
+    public ResponseEntity<?> getUserProfile() {
+        try {
+            // 1. Extract email from validated JWT token context
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+            if (email == null || email.equals("anonymousUser")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized context profile request.");
+            }
+
+            // 2. Fetch user information from database
+            Users user = urepo.findUsersByEmail(email); // Ensure findUsersByEmail is exposed in UserService
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User profile not found.");
+            }
+
+            // 3. Return user profile safely (excluding password hashes for security)
+            Map<String, Object> profileData = new HashMap<>();
+            profileData.put("fullname", user.getFullname()); //
+            profileData.put("email", user.getEmail()); //
+            profileData.put("shipping_address", user.getShipping_address()); //
+            profileData.put("payment_method", user.getPayment_method()); //
+
+            return ResponseEntity.ok(profileData);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        }
     }
 }

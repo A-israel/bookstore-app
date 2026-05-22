@@ -38,7 +38,8 @@ public class Secure {
                         .requestMatchers("/api/cart","/api/cart/**").permitAll()
                         .requestMatchers("/api/wishlist","/api/wishlist/**").permitAll()
                         .requestMatchers("/api/orders","/api/orders/**").permitAll()
-                        .requestMatchers("/api/reviews","/api/reviews/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reviews/book/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reviews/add").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
