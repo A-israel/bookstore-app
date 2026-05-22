@@ -1,0 +1,1 @@
+ C:\\Users\\Israel\\StudioProjects\\bookstore-app\\.dart_tool\\flutter_build\\e620977a5f9ab6256d7bbe0ee852f004\\native_assets.json: 

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class ApiService {
@@ -220,19 +221,27 @@ class ApiService {
     }
 
   }
-  static const _storage = FlutterSecureStorage();
   static Future<Map<String, String>> getAuthHeaders() async {
-    // 1. Retrieve the JWT string you saved during the login/registration phase
-    String? token = await _storage.read(key: 'auth_token');
 
-    // 2. Return the required structured header format matching your backend's JwtFilter expectancy
-    return {
+    const storage = FlutterSecureStorage();
+
+    // 2. Read the exact key name saved during login: 'jwt_token'
+    final String? token = await storage.read(key: 'jwt_token');
+
+    Map<String, String> headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token', // 👈 Attaches "Bearer <token>"
     };
-  }
 
+    // 3. Append the bearer token if it exists
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    } else {
+      print("⚠️ WARNING: No JWT token found in FlutterSecureStorage for key 'jwt_token'.");
+    }
+
+    return headers;
+  }
   // Fetch detailed map stats containing nested items array list metrics
   static Future<dynamic> fetchReviews(int bookId) async {
     try {
@@ -251,20 +260,46 @@ class ApiService {
 
   // Post star rating feedback metrics array blocks securely downstream
   static Future<bool> submitReview(int bookId, int rating, String comment) async {
+    final headers = await getAuthHeaders();
+    print("Sending Headers: $headers");
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/reviews/add'),
-        headers: await getAuthHeaders(),
+        headers: headers,
         body: json.encode({
           'bid': bookId, // Matches backend mapping expectation index key name
           'rating': rating,
-          'comment': comment,
+          'comments': comment,
         }),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        print("FAILED STATUS: ${response.statusCode}");
+        print("FAILED BODY: ${response.body}");
+        return false;
+      }
     } catch (e) {
       print("Error uploading layout model data: $e");
       return false;
     }
+  }
+  // Fetch logged-in user profile details safely
+  static Future<Map<String, dynamic>?> fetchUserProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/profile'),
+        headers: await getAuthHeaders(), // 👈 Automatically bundles our fixed JWT token!
+      );
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(json.decode(response.body));
+      } else {
+        print("Profile fetch failed with status: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Exception reading profile connection schema: $e");
+    }
+    return null;
   }
 }

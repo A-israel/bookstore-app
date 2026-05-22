@@ -320,16 +320,24 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   Widget _buildReviewCard(dynamic reviewElement) {
     if (reviewElement is! Map) return const SizedBox.shrink();
 
-    final Map<String, dynamic> userMap = reviewElement['users'] != null
-        ? Map<String, dynamic>.from(reviewElement['users'])
-        : {};
+    // 1. Cleanly check for the user's name across nested objects or root-level keys
+    String reviewerName = 'Anonymous';
 
-    final String reviewerName = userMap['fullName'] ?? 'Anonymous';
+    if (reviewElement['users'] != null) {
+      // If it's a nested Hibernate object relationship
+      final Map<dynamic, dynamic> userMap = reviewElement['users'];
+      reviewerName = userMap['fullname'] ?? userMap['fullName'] ?? 'Anonymous';
+    } else if (reviewElement['fullname'] != null || reviewElement['fullName'] != null) {
+
+      reviewerName = reviewElement['fullname'] ?? reviewElement['fullName'] ?? 'Anonymous';
+    }
+
+    final String reviewCommentText = reviewElement['comments'] ?? reviewElement['comment'] ?? 'No comment provided';
     final String initialChar = reviewerName.trim().isEmpty ? 'A' : reviewerName.trim()[0].toUpperCase();
-    final String reviewCommentText = reviewElement['comments'] ?? '';
     final double ratingGiven = (reviewElement['rating'] as num? ?? 5.0).toDouble();
 
     return Container(
+
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

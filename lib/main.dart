@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF4F46E5), // your indigo/purple brand color
         ),
-        textTheme: GoogleFonts.poppinsTextTheme(), // clean modern font
+        textTheme: GoogleFonts.poppinsTextTheme(), // clean modern fontr
         useMaterial3: true,
       ),
       home: const SplashScreen(), // app opens on the login screen
