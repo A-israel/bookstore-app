@@ -1,4 +1,5 @@
 // lib/screens/home_screen.dart
+import 'dart:async'; // 👈 1. Added for Timer/Debounce logic
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../cart/cart_screen.dart';
@@ -20,12 +21,25 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedGenre = 'All';
   bool isLoading = true;
   List<Map<String, dynamic>> books = [];
+  List<Map<String, dynamic>> searchedBooks = []; // 👈 2. Holds dynamic backend search query data
   List<String> genres = ['All'];
+
+  // 👈 3. Controllers to track inputs and handle timing windows
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     _loadBooksData();
+  }
+
+  @override
+  void dispose() {
+    // 👈 4. Always dispose of streams and inputs to prevent system leaks
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadBooksData() async {
@@ -41,53 +55,83 @@ class _HomeScreenState extends State<HomeScreen> {
     uniqueGenres.sort();
 
     setState(() {
-      books = fetchedBooks;
-      // 👈 FIXED: Safely builds the chip items ensuring 'All' sits cleanly at index 0
-      genres = ['All', ...uniqueGenres];
-      isLoading = false;
+      books = fetchedBooks; //
+      searchedBooks = fetchedBooks; // Fallback matches full dataset on initialize
+      // Safely builds the chip items ensuring 'All' sits cleanly at index 0
+      genres = ['All', ...uniqueGenres]; //
+      isLoading = false; //
     });
   }
 
-  // 👈 FIXED: Filtering strategy maps case-sensitivity cleanly
-  List<Map<String, dynamic>> get filteredBooks {
-    if (selectedGenre == 'All') return books;
-    return books.where((b) => b['genre'] == selectedGenre).toList();
+  // 👈 5. Debounce processing sequence (Waits 300ms after user stops typing)
+  void _onSearchChanged(String query) {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+
+    _debounceTimer = Timer(const Duration(milliseconds: 1300), () async {
+      if (query.trim().isEmpty) {
+        setState(() => searchedBooks = books);
+        return;
+      }
+
+      setState(() => isLoading = true);
+      // Calls your endpoint: /api/books/search?query=...
+      final searchResults = await ApiService.searchBooks(query);
+
+      setState(() {
+        searchedBooks = searchResults;
+        isLoading = false;
+      });
+    });
   }
 
-  List<Map<String, dynamic>> get bestsellers =>
-      books.where((b) => b['isBestseller'] == true).toList();
+  // 👈 6. Combined Strategy: Applies genre chip constraints over active search queries
+  List<Map<String, dynamic>> get filteredBooks {
+    if (selectedGenre == 'All') return searchedBooks;
+    return searchedBooks.where((b) => b['genre'] == selectedGenre).toList();
+  }
+
+  List<Map<String, dynamic>> get bestsellers {
+    // Hide bestsellers banner while searching so users can focus on direct results
+    if (_searchController.text.isNotEmpty) return [];
+    return books.where((b) => b['isBestseller'] == true).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
-      body: SafeArea(
-        child: Column(
+      backgroundColor: const Color(0xFFF3F4F6), //
+      body: SafeArea( //
+        child: Column( //
           children: [
-            _buildTopBar(),
-            Expanded(
+            _buildTopBar(), //
+            Expanded( //
               child: isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
-                  : RefreshIndicator(
-                onRefresh: _loadBooksData,
-                color: const Color(0xFF4F46E5),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5))) //
+                  : RefreshIndicator( //
+                onRefresh: _loadBooksData, //
+                color: const Color(0xFF4F46E5), //
+                child: SingleChildScrollView( //
+                  physics: const AlwaysScrollableScrollPhysics(), //
+                  padding: const EdgeInsets.all(12), //
+                  child: Column( //
+                    crossAxisAlignment: CrossAxisAlignment.start, //
                     children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 16),
-                      _buildGenreChips(),
-                      const SizedBox(height: 20),
-                      _buildSectionTitle('🔥 Bestsellers'),
-                      const SizedBox(height: 12),
-                      _buildBestsellerRow(),
-                      const SizedBox(height: 20),
-                      _buildSectionTitle('📚 All Books'),
-                      const SizedBox(height: 12),
-                      _buildAllBooksGrid(),
+                      _buildSearchBar(), //
+                      const SizedBox(height: 16), //
+                      _buildGenreChips(), //
+                      const SizedBox(height: 20), //
+
+                      // 👈 Only render if bestsellers are present and we are not searching
+                      if (bestsellers.isNotEmpty) ...[
+                        _buildSectionTitle('🔥 Bestsellers'), //
+                        const SizedBox(height: 12), //
+                        _buildBestsellerRow(), //
+                        const SizedBox(height: 20), //
+                      ],
+
+                      _buildSectionTitle(_searchController.text.isEmpty ? '📚 All Books' : '🔍 Search Results'),
+                      const SizedBox(height: 12), //
+                      _buildAllBooksGrid(), //
                     ],
                   ),
                 ),
@@ -96,63 +140,76 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(), //
     );
   }
 
   Widget _buildTopBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: const Color(0xFF4F46E5),
-      child: Row(
+    return Container( //
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), //
+      color: const Color(0xFF4F46E5), //
+      child: Row( //
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Column( //
+            crossAxisAlignment: CrossAxisAlignment.start, //
             children: [
-              Text('Welcome back! 👋',
-                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
-              Text('BookStore',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  )),
+              Text('Welcome back! 👋', //
+                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)), //
+              Text('BookStore', //
+                  style: GoogleFonts.poppins( //
+                    color: Colors.white, //
+                    fontSize: 20, //
+                    fontWeight: FontWeight.bold, //
+                  )), //
             ],
           ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.favorite_border, color: Colors.white),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const WishlistScreen())),
+          const Spacer(), //
+          IconButton( //
+            icon: const Icon(Icons.favorite_border, color: Colors.white), //
+            onPressed: () => Navigator.push(context, //
+                MaterialPageRoute(builder: (_) => const WishlistScreen())), //
           ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const CartScreen())),
+          IconButton( //
+            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white), //
+            onPressed: () => Navigator.push(context, //
+                MaterialPageRoute(builder: (_) => const CartScreen())), //
           ),
         ],
       ),
     );
   }
 
+  // 👈 7. Integrated Controller Hooks and Clear Triggers
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16), //
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        color: Colors.white, //
+        borderRadius: BorderRadius.circular(12), //
+        border: Border.all(color: Colors.grey.shade200), //
       ),
-      child: Row(
+      child: Row( //
         children: [
-          const Icon(Icons.search, color: Color(0xFF4F46E5)),
-          const SizedBox(width: 8),
-          Expanded(
+          const Icon(Icons.search, color: Color(0xFF4F46E5)), //
+          const SizedBox(width: 8), //
+          Expanded( //
             child: TextField(
+              controller: _searchController, // Binds our state values
+              onChanged: _onSearchChanged, // Calls custom execution timer
+              style: GoogleFonts.poppins(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Search books, authors...',
-                hintStyle: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
-                border: InputBorder.none,
+                hintText: 'Search books, authors...', //
+                hintStyle: GoogleFonts.poppins(color: Colors.grey, fontSize: 14), //
+                border: InputBorder.none, //
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.grey, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => searchedBooks = books);
+                  },
+                )
+                    : null,
               ),
             ),
           ),
@@ -162,32 +219,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildGenreChips() {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: genres.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+    return SizedBox( //
+      height: 36, //
+      child: ListView.separated( //
+        scrollDirection: Axis.horizontal, //
+        itemCount: genres.length, //
+        separatorBuilder: (_, __) => const SizedBox(width: 8), //
         itemBuilder: (context, index) {
-          final genre = genres[index];
-          final isSelected = selectedGenre == genre;
-          return GestureDetector(
-            onTap: () => setState(() => selectedGenre = genre),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(
-                  color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300,
+          final genre = genres[index]; //
+          final isSelected = selectedGenre == genre; //
+          return GestureDetector( //
+            onTap: () => setState(() => selectedGenre = genre), //
+            child: Container( //
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), //
+              decoration: BoxDecoration( //
+                color: isSelected ? const Color(0xFF4F46E5) : Colors.white, //
+                borderRadius: BorderRadius.circular(99), //
+                border: Border.all( //
+                  color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300, //
                 ),
               ),
-              child: Text(
-                genre,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : Colors.grey.shade700,
+              child: Text( //
+                genre, //
+                style: GoogleFonts.poppins( //
+                  fontSize: 12, //
+                  fontWeight: FontWeight.w500, //
+                  color: isSelected ? Colors.white : Colors.grey.shade700, //
                 ),
               ),
             ),
@@ -197,87 +254,87 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── BESTSELLER ROW (COMPACT) ──
   Widget _buildBestsellerRow() {
-    if (bestsellers.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Text('No bestsellers available', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+    if (bestsellers.isEmpty) { //
+      return Center( //
+        child: Padding( //
+          padding: const EdgeInsets.symmetric(vertical: 20), //
+          child: Text('No bestsellers available', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)), //
         ),
       );
     }
-    return SizedBox(
-      height: 140,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: bestsellers.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+    return SizedBox( //
+      height: 140, //
+      child: ListView.separated( //
+        scrollDirection: Axis.horizontal, //
+        itemCount: bestsellers.length, //
+        separatorBuilder: (_, __) => const SizedBox(width: 8), //
         itemBuilder: (context, index) {
-          final book = bestsellers[index];
-          return GestureDetector(
+          final book = bestsellers[index]; //
+          return GestureDetector( //
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => ReviewsScreen(
-                  bookTitle: book['title'],
-                  bookAuthor: book['author'],
-                  bookColor: book['color'],
+                  bookId: book['bid'] ?? 0, // 👈 ADDED CONSTRUCTOR INJECTION
+                  bookTitle: book['title'] ?? 'Untitled',
+                  bookAuthor: book['author'] ?? 'Unknown Author',
+                  bookColor: book['color'] ?? const Color(0xFF4F46E5),
                 ),
               ),
             ),
-            child: Container(
-              width: 95,
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade100),
+            child: Container( //
+              width: 95, //
+              padding: const EdgeInsets.all(6), //
+              decoration: BoxDecoration( //
+                color: Colors.white, //
+                borderRadius: BorderRadius.circular(10), //
+                border: Border.all(color: Colors.grey.shade100), //
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column( //
+                crossAxisAlignment: CrossAxisAlignment.start, //
                 children: [
-                  Container(
-                    height: 70,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(6),
+                  Container( //
+                    height: 70, //
+                    width: double.infinity, //
+                    decoration: BoxDecoration( //
+                      color: Colors.grey.shade100, //
+                      borderRadius: BorderRadius.circular(6), //
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        book['coverUrl'],
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: book['color'],
-                          child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)),
+                    child: ClipRRect( //
+                      borderRadius: BorderRadius.circular(6), //
+                      child: Image.network( //
+                        book['coverUrl'], //
+                        fit: BoxFit.cover, //
+                        errorBuilder: (context, error, stackTrace) => Container( //
+                          color: book['color'], //
+                          child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)), //
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(book['title'],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10)),
-                  Text(book['author'],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(color: Colors.grey, fontSize: 8)),
-                  const SizedBox(height: 2),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const SizedBox(height: 4), //
+                  Text(book['title'], //
+                      maxLines: 1, //
+                      overflow: TextOverflow.ellipsis, //
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10)), //
+                  Text(book['author'], //
+                      maxLines: 1, //
+                      overflow: TextOverflow.ellipsis, //
+                      style: GoogleFonts.poppins(color: Colors.grey, fontSize: 8)), //
+                  const SizedBox(height: 2), //
+                  Row( //
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, //
                     children: [
-                      Text(book['price'],
-                          style: GoogleFonts.poppins(
-                            color: const Color(0xFF4F46E5),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          )),
-                      Row(children: [
-                        const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
-                        Text('${book['ratings']}', style: GoogleFonts.poppins(fontSize: 8)),
+                      Text(book['price'], //
+                          style: GoogleFonts.poppins( //
+                            color: const Color(0xFF4F46E5), //
+                            fontWeight: FontWeight.bold, //
+                            fontSize: 10, //
+                          )), //
+                      Row(children: [ //
+                        const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10), //
+                        Text('${book['ratings']}', style: GoogleFonts.poppins(fontSize: 8)), //
                       ]),
                     ],
                   ),
@@ -290,14 +347,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── ALL BOOKS GRID (COMPACT 4 IN A ROW) ──
   Widget _buildAllBooksGrid() {
     final booksList = filteredBooks;
     if (booksList.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
-          child: Text('No books in this genre yet', style: GoogleFonts.poppins(color: Colors.grey)),
+          child: Text(
+            _searchController.text.isEmpty ? 'No books in this genre yet' : 'No books match your search',
+            style: GoogleFonts.poppins(color: Colors.grey),
+          ),
         ),
       );
     }
@@ -314,13 +373,15 @@ class _HomeScreenState extends State<HomeScreen> {
       itemBuilder: (context, index) {
         final book = booksList[index];
         return GestureDetector(
+
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ReviewsScreen(
-                bookTitle: book['title'],
-                bookAuthor: book['author'],
-                bookColor: book['color'],
+                bookId: book['bid'] ?? 0, // 👈 ADDED CONSTRUCTOR INJECTION
+                bookTitle: book['title'] ?? 'Untitled',
+                bookAuthor: book['author'] ?? 'Unknown Author',
+                bookColor: book['color'] ?? const Color(0xFF4F46E5),
               ),
             ),
           ),
@@ -371,19 +432,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      book['price'],
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF4F46E5),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                    Expanded(
+                      child: Text(
+                       book['price'],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF4F46E5),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                    // Inside your book card layout or details view row:
                     IconButton(
-                      icon: const Icon(Icons.favorite_border, color: Colors.redAccent), // Or use conditional formatting for filled hearts
+                      icon: const Icon(Icons.favorite_border, color: Colors.redAccent, size: 16),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                       onPressed: () async {
-                        // 1. Extract the secure book ID safely
                         final int bookId = book['bid'] ?? 0;
                         final String bookTitle = book['title'] ?? 'This book';
 
@@ -394,10 +459,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           return;
                         }
 
-                        // 2. Call the API layer to save the item to your MySQL wishlist table
                         bool success = await ApiService.addToWishlist(bookId);
 
-                        // 3. Notify the user with a clean floating snackbar
                         if (mounted && success) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -410,7 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         } else if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Could not add to wishlist. Check connection or backend login context ❌'),
+                              content: Text('Could not add to wishlist. Check login context ❌'),
                               behavior: SnackBarBehavior.floating,
                               backgroundColor: Colors.redAccent,
                             ),
@@ -418,9 +481,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       },
                     ),
+                    const SizedBox(width: 2),
                     GestureDetector(
                       onTap: () async {
-                        // 👈 1. Pass the integer ID ('bid') instead of a string title
                         final int bookId = book['bid'] ?? 0;
                         final String bookTitle = book['title'] ?? 'Book';
 
@@ -436,7 +499,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (mounted && success) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              // 👈 2. Clean fallback ensures this interpolation never handles a 'Null' type
                               content: Text('$bookTitle added to cart! 🛒', style: GoogleFonts.poppins(fontSize: 12)),
                               duration: const Duration(seconds: 1),
                               behavior: SnackBarBehavior.floating,
@@ -454,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: const Color(0xFF4F46E5),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 10),
+                        child: const Icon(Icons.add, color: Colors.white, size: 16),
                       ),
                     )
                   ],

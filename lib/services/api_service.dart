@@ -1,12 +1,13 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 
 class ApiService {
   // Replace with your computer's IP if testing on a physical device
-  static const String baseUrl = 'http://localhost:8080/api';
+  static const String baseUrl = 'http://10.93.190.4:8080/api';
 
   // Fetch all books from Spring Boot
   static Future<List<Map<String, dynamic>>> fetchBooks() async {
@@ -36,6 +37,30 @@ class ApiService {
     } catch (e) {
       print("Error fetching books: $e");
       return []; // Return empty list on failure gracefully
+    }
+  }
+
+  // ── SEARCH INVENTORY ENDPOINT ──
+  static Future<List<Map<String, dynamic>>> searchBooks(String query) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/books/search?query=${Uri.encodeComponent(query)}'),
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+        return data.map((book) => {
+          'id': book['id'],
+          'title': book['title'] ?? 'Untitled',
+          'author': book['author'] ?? 'Unknown',
+          'price': (book['price'] as num?)?.toInt() ?? 0,
+          'coverUrl': book['coverUrl'] ?? '',
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      print("Error executing database search sequence: $e");
+      return [];
     }
   }
 
@@ -184,15 +209,62 @@ class ApiService {
   }
 
   // ── TRIGGER CHECKOUT SUBMISSION ──
-  static Future<bool> executeCheckout(String address) async {
+  static Future<bool> executeCheckout() async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/orders/checkout?shippingAddress=${Uri.encodeComponent(address)}'),
+        Uri.parse('$baseUrl/orders/checkout'),
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }
 
+  }
+  static const _storage = FlutterSecureStorage();
+  static Future<Map<String, String>> getAuthHeaders() async {
+    // 1. Retrieve the JWT string you saved during the login/registration phase
+    String? token = await _storage.read(key: 'auth_token');
+
+    // 2. Return the required structured header format matching your backend's JwtFilter expectancy
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token', // 👈 Attaches "Bearer <token>"
+    };
+  }
+
+  // Fetch detailed map stats containing nested items array list metrics
+  static Future<dynamic> fetchReviews(int bookId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/reviews/book/$bookId'),
+        headers: await getAuthHeaders(),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      print("Exception reading repository route: $e");
+    }
+    return null;
+  }
+
+  // Post star rating feedback metrics array blocks securely downstream
+  static Future<bool> submitReview(int bookId, int rating, String comment) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/reviews/add'),
+        headers: await getAuthHeaders(),
+        body: json.encode({
+          'bid': bookId, // Matches backend mapping expectation index key name
+          'rating': rating,
+          'comment': comment,
+        }),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print("Error uploading layout model data: $e");
+      return false;
+    }
   }
 }

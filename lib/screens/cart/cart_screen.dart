@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/api_service.dart';
+import '../orders/orders_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -177,11 +178,13 @@ class _CartScreenState extends State<CartScreen> {
 
                   setState(() => isLoading = true);
                   // Passing a delivery address matching your Spring Boot string model mapping
-                  bool success = await ApiService.executeCheckout("Lekki Phase 1, Lagos, Nigeria");
+                  bool success = await ApiService.executeCheckout();
 
                   if (mounted) {
                     setState(() => isLoading = false);
                     if (success) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Order placed successfully! 🚀 Check your history.', style: GoogleFonts.poppins()),

@@ -35,7 +35,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF4F46E5),
         foregroundColor: Colors.white,
-        title: Text('My Wishlist ❤️', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        title: Text('My Wishlist ️', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
         elevation: 0,
       ),
       body: isLoading
