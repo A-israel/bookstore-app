@@ -10,6 +10,8 @@ class ApiService {
   // Replace with your computer's IP if testing on a physical device
   static const String baseUrl = 'http://10.93.190.4:8080/api';
 
+
+
   // Fetch all books from Spring Boot
   static Future<List<Map<String, dynamic>>> fetchBooks() async {
     try {
@@ -67,44 +69,42 @@ class ApiService {
 
   static Future<List<Map<String, dynamic>>> fetchCart() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/cart'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/cart'),
+        headers: await getAuthHeaders(), // 👈 CRITICAL: Passes token to secure cart endpoint
+      );
+
+      print("🛒 Fetch Cart Status: ${response.statusCode}");
+      print("🛒 Fetch Cart Body: ${response.body}");
+
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
-        return data.map((item) {
-          final bookData = item['books'];
-          return {
-            'id': item['id'],
-            'title': bookData != null ? (bookData['title'] ?? 'Untitled') : 'Untitled',
-            'author': bookData != null ? (bookData['author'] ?? 'Unknown') : 'Unknown',
-            'price': bookData != null ? (bookData['price'] as num).toInt() : 0,
-            'quantity': item['quantity'] ?? 1,
-            'coverUrl': bookData != null ? bookData['coverUrl'] : '',
-          };
-        }).toList();
-      }
-       else {
-        print("Server returned unexpected failure error status: ${response.statusCode}");
-        throw Exception('Failed to load cart items');
+        return List<Map<String, dynamic>>.from(data);
       }
     } catch (e) {
-      print("Error fetching cart: $e");
-      return [];
+      print("Error fetching cart items data context: $e");
     }
+    return [];
   }
-  // Add a book to the backend cart
+
+  // ── 🟢 FIXED REWORKED ADD TO CART METHOD ──
   static Future<bool> addToCart(int bookId) async {
     try {
-      // This matches: @PostMapping("/add") public CartItems addToCart(@RequestParam("bookId") Integer bookId)
       final response = await http.post(
         Uri.parse('$baseUrl/cart/add?bookId=$bookId'),
+        headers: await getAuthHeaders(), // 👈 Passes unified headers
       );
+
+      print("🛒 Add to Cart Status Code: ${response.statusCode}");
+      print("🛒 Add to Cart Response Body: ${response.body}");
+
+      // Returns true if backend accepts operation as 200 OK or 201 Created
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print("Error adding to cart: $e");
+      print("Error adding item upstream: $e");
       return false;
     }
   }
-
   // ── UPDATE QUANTITY ──
   static Future<bool> updateCartQuantity(int cartItemId, int newQuantity) async {
     try {
@@ -187,33 +187,25 @@ class ApiService {
   // History payload deserializer parsing multi-relational arrays
   static Future<List<Map<String, dynamic>>> fetchOrders() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/orders'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/orders/user'),
+        headers: await getAuthHeaders(),
+      );
       if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
-        return data.map((order) {
-          final List<dynamic> detailedItems = order['orderItems'] ?? [];
-          return {
-            'id': order['id'],
-            'date': order['date'] != null ? order['date'].toString().split('T')[0] : 'Recent',
-            'status': order['status'] ?? 'Processing',
-            'amount': (order['total_price'] as num?)?.toInt() ?? 0,
-            'count': detailedItems.fold(0, (sum, item) => sum + (item['quantity'] as int? ?? 1)),
-            'tracking': order['trackingNumber'] ?? 'N/A',
-          };
-        }).toList();
+        final List<dynamic> data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data);
       }
-      return [];
     } catch (e) {
-      print("Error fetching past history constraints: $e");
-      return [];
+      print("Error tracking user timeline: $e");
     }
+    return [];
   }
-
   // ── TRIGGER CHECKOUT SUBMISSION ──
   static Future<bool> executeCheckout() async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/orders/checkout'),
+        headers: await getAuthHeaders(),
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
@@ -284,22 +276,74 @@ class ApiService {
       return false;
     }
   }
+  static Future<List<Map<String, dynamic>>> fetchUserReviews() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/reviews/user'),
+        headers: await getAuthHeaders(),
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data);
+      }
+      return [];
+    } catch (e) {
+      print("Error fetching user reviews: $e");
+      return [];
+    }
+  }
   // Fetch logged-in user profile details safely
   static Future<Map<String, dynamic>?> fetchUserProfile() async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/auth/profile'),
-        headers: await getAuthHeaders(), // 👈 Automatically bundles our fixed JWT token!
+        headers: await getAuthHeaders(),
       );
 
       if (response.statusCode == 200) {
         return Map<String, dynamic>.from(json.decode(response.body));
       } else {
-        print("Profile fetch failed with status: ${response.statusCode}");
+        print("Profile endpoint returned error status: ${response.statusCode}");
+        return null;
       }
     } catch (e) {
-      print("Exception reading profile connection schema: $e");
+      print("Network exception encountered fetching profile map: $e");
+      return null;
     }
-    return null;
   }
+  static Future<bool> updateProfileData({
+    required String fullname,
+    required String shippingAddress,
+    required String paymentMethod,
+    required String password,
+  }) async {
+    try {
+      // 🟢 Gather authorization tokens ('Authorization': 'Bearer ...')
+      final headers = await getAuthHeaders();
+
+      // 🟢 CRITICAL FIX: Explicitly add Content-Type so Spring Boot parses it correctly
+      headers['Content-Type'] = 'application/json';
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/auth/profile/update'),
+        headers: headers, // Pass the combined headers map
+        body: json.encode({
+          'fullname': fullname,
+          'shipping_address': shippingAddress,
+          'payment_method': paymentMethod,
+          'password': password,
+          'email': '',
+        }),
+      );
+
+      print("Profile Update Status Code: ${response.statusCode}");
+      print("Profile Update Response Body: ${response.body}");
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error executing profile update: $e");
+      return false;
+    }
+  }
+
+
 }

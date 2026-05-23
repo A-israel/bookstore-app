@@ -39,11 +39,11 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     // after 3 seconds total, navigate to login
-    Future.delayed(const Duration(seconds: 3), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => const LoginScreen()), // or HomeScreen()
         );
       }
     });

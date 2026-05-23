@@ -21,11 +21,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _loadOrdersData() async {
     setState(() => isLoading = true);
-    final history = await ApiService.fetchOrders();
-    setState(() {
-      orders = history;
-      isLoading = false;
-    });
+    try {
+      final history = await ApiService.fetchOrders();
+      setState(() {
+        orders = history;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("UI parsing error loading orders: $e");
+      setState(() {
+        orders = [];
+        isLoading = false;
+      });
+    }
   }
 
   String _formatCurrency(int amount) {
@@ -63,72 +71,141 @@ class _OrdersScreenState extends State<OrdersScreen> {
           : RefreshIndicator(
         onRefresh: _loadOrdersData,
         color: const Color(0xFF4F46E5),
-        child: ListView.separated(
-          padding: const EdgeInsets.all(16),
+        child: ListView.builder(
           itemCount: orders.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) => _buildOrderCard(index),
+          padding: const EdgeInsets.all(12),
+          itemBuilder: (context, index) {
+            final Map<String, dynamic> currentOrder = orders[index];
+            return _buildOrderCard(currentOrder);
+          },
         ),
       ),
     );
   }
+  Widget _buildOrderCard(Map<String, dynamic> order) {
+    final String orderId = (order['oid'] ?? order['id'] ?? order['orderId'] ?? 'N/A').toString();
+    final String status = order['status'] ?? 'Pending';
+    final String orderDate = order['createdAt'] ?? order['orderDate'] ?? order['date'] ?? 'Recent';
 
-  Widget _buildOrderCard(int index) {
-    final order = orders[index];
-    final Color statusColor = _getStatusColor(order['status']);
+    // 1. Get the list of nested order items safely
+    final List<dynamic> orderItemsList = order['orderItems'] ?? [];
+    final int itemCount = orderItemsList.isNotEmpty ? orderItemsList.length : ((order['count'] ?? order['itemCount'] ?? 1) as int);
+
+    // 2. 🟢 DYNAMIC SUM calculation fallback loop
+    int itemAmount = 0;
+    if (orderItemsList.isNotEmpty) {
+      // If orderItems exist, manually sum up: priceAtPurchase * quantity
+      for (var item in orderItemsList) {
+        final book = item['books'] as Map<String, dynamic>?;
+        final int qty = (item['quantity'] ?? 1) as int;
+        final double snapshotPrice = ((item['priceAtPurchase'] ?? book?['price'] ?? 0.0) as num).toDouble();
+
+        itemAmount += (snapshotPrice * qty).toInt();
+      }
+    } else {
+      // Fallback if the backend does pass a top-level field somewhere
+      itemAmount = ((order['amount'] ?? order['totalPrice'] ?? order['price'] ?? order['total'] ?? 0.0) as num).toInt();
+    }
+
+    // 3. Add delivery cost context if applicable (e.g., matching your 1,500 delivery rule)
+    // If your backend amount already includes shipping, remove the '+ 1500' line below!
+    if (itemAmount > 0) {
+      itemAmount += 1500;
+    }
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header: Order number and Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Order #${order['id']}', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text('Order #$orderId', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(30),
+                  color: _getStatusColor(status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  order['status'].toUpperCase(),
-                  style: GoogleFonts.poppins(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10),
+                  status.toUpperCase(),
+                  style: GoogleFonts.poppins(color: _getStatusColor(status), fontWeight: FontWeight.bold, fontSize: 11),
                 ),
-              ),
+              )
             ],
           ),
+
           const SizedBox(height: 4),
-          Text('Tracking: ${order['tracking']}', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
-          const Divider(height: 24),
+          Text(orderDate, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(height: 1, color: Color(0xFFF3F4F6)),
+          ),
+
+          // Render line items summary block
+          if (orderItemsList.isNotEmpty) ...[
+            Text('Items Summary:', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: orderItemsList.length,
+              itemBuilder: (context, itemIndex) {
+                final item = orderItemsList[itemIndex] as Map<String, dynamic>;
+                final book = item['books'] as Map<String, dynamic>?;
+
+                final String bookTitle = book?['title'] ?? 'Unknown Title';
+                final int qty = (item['quantity'] ?? 1) as int;
+                final int purchasePrice = ((item['priceAtPurchase'] ?? book?['price'] ?? 0.0) as num).toInt();
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '$bookTitle × $qty',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(fontSize: 13, color: Colors.black87),
+                        ),
+                      ),
+                      Text(
+                        _formatCurrency(purchasePrice * qty),
+                        style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Divider(height: 1, color: Color(0xFFF3F4F6)),
+            ),
+          ],
+
+          // Footer: Total Summary section displays itemAmount dynamically calculated above
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Date Placed', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
-                  const SizedBox(height: 2),
-                  Text(order['date'], style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 13)),
-                ],
+              Text('Total Summary (inc. Delivery)', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12)),
+              Text(
+                _formatCurrency(itemAmount),
+                style: GoogleFonts.poppins(color: const Color(0xFF4F46E5), fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('${order['count']} item(s)', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
-                  const SizedBox(height: 2),
-                  Text(
-                    _formatCurrency(order['amount']),
-                    style: GoogleFonts.poppins(color: const Color(0xFF4F46E5), fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ],
-              )
             ],
           ),
         ],

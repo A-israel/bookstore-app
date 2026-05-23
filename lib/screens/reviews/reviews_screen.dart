@@ -332,7 +332,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
       reviewerName = reviewElement['fullname'] ?? reviewElement['fullName'] ?? 'Anonymous';
     }
 
-    final String reviewCommentText = reviewElement['comments'] ?? reviewElement['comment'] ?? 'No comment provided';
+    final String reviewCommentText = reviewElement['comments'] ?? reviewElement['comments'] ?? 'No comment provided';
     final String initialChar = reviewerName.trim().isEmpty ? 'A' : reviewerName.trim()[0].toUpperCase();
     final double ratingGiven = (reviewElement['rating'] as num? ?? 5.0).toDouble();
 

@@ -30,11 +30,22 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // Pure state mathematical properties
-  int get subtotal => cartItems.fold(
-      0, (sum, item) => sum + ((item['price'] as num).toInt() * (item['quantity'] as int)));
+  // 🟢 FIXED: Target 'cartItems' instead of the non-existent 'orders' variable
+  double get subtotal {
+    return cartItems.fold(0.0, (sum, item) {
+      // Extract the nested 'books' map safely from your CartItems backend entity structure
+      final book = item['books'] as Map<String, dynamic>?;
+
+      // Extract values cleanly, falling back to 0 or 0.0 if missing to prevent crashes
+      final double price = ((book?['price'] ?? 0.0) as num).toDouble();
+      final int quantity = (item['quantity'] ?? 0) as int;
+
+      return sum + (price * quantity);
+    });
+  }
 
   int get delivery => subtotal > 0 ? 1500 : 0;
-  int get total => subtotal + delivery;
+  double get total => subtotal + delivery;
 
   String _formatCurrency(int amount) {
     return '₦${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
@@ -72,6 +83,14 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildCartItem(int index) {
     final item = cartItems[index];
+    // 🟢 FIXED: Safely extract the nested book object to avoid Null sub-type compilation errors
+    final book = item['books'] as Map<String, dynamic>?;
+
+    final String title = book?['title'] ?? 'Unknown Title';
+    final String author = book?['author'] ?? 'Unknown Author';
+    final String coverUrl = book?['coverUrl'] ?? book?['cover_url'] ?? '';
+    final double price = ((book?['price'] ?? 0.0) as num).toDouble();
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -91,30 +110,39 @@ class _CartScreenState extends State<CartScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                item['coverUrl'] ?? '',
+              child: coverUrl.isNotEmpty
+                  ? Image.network(
+                coverUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: const Color(0xFF4F46E5),
                   child: const Icon(Icons.menu_book, color: Colors.white, size: 24),
                 ),
+              )
+                  : Container(
+                color: const Color(0xFF4F46E5),
+                child: const Icon(Icons.menu_book, color: Colors.white, size: 24),
               ),
             ),
           ),
           const SizedBox(width: 12),
 
-          // Book Meta
+          // Book Meta Data Fields
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item['title'] ?? 'Unknown Title',
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(item['author'] ?? 'Unknown Author',
+                Text(author,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
                 const SizedBox(height: 6),
                 Text(
-                  _formatCurrency((item['price'] as num).toInt()),
+                  _formatCurrency(price.toInt()),
                   style: GoogleFonts.poppins(color: const Color(0xFF4F46E5), fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ],
@@ -163,11 +191,11 @@ class _CartScreenState extends State<CartScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _summaryRow('Subtotal', _formatCurrency(subtotal)),
+            _summaryRow('Subtotal', _formatCurrency(subtotal.toInt())),
             const SizedBox(height: 8),
             _summaryRow('Delivery Fee', _formatCurrency(delivery)),
             const Divider(height: 24),
-            _summaryRow('Total Amount', _formatCurrency(total), isBold: true),
+            _summaryRow('Total Amount', _formatCurrency(total.toInt()), isBold: true),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -177,7 +205,6 @@ class _CartScreenState extends State<CartScreen> {
                   if (cartItems.isEmpty) return;
 
                   setState(() => isLoading = true);
-                  // Passing a delivery address matching your Spring Boot string model mapping
                   bool success = await ApiService.executeCheckout();
 
                   if (mounted) {
@@ -192,7 +219,7 @@ class _CartScreenState extends State<CartScreen> {
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
-                      _loadCartData(); // Clears view locally since DB records migrated
+                      _loadCartData(); // Refreshes view context cleanly
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

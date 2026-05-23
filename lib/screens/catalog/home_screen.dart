@@ -55,15 +55,15 @@ class _HomeScreenState extends State<HomeScreen> {
     uniqueGenres.sort();
 
     setState(() {
-      books = fetchedBooks; //
+      books = fetchedBooks;
       searchedBooks = fetchedBooks; // Fallback matches full dataset on initialize
       // Safely builds the chip items ensuring 'All' sits cleanly at index 0
-      genres = ['All', ...uniqueGenres]; //
-      isLoading = false; //
+      genres = ['All', ...uniqueGenres];
+      isLoading = false;
     });
   }
 
-  // 👈 5. Debounce processing sequence (Waits 300ms after user stops typing)
+  // 👈 5. Debounce processing sequence (Waits 1.3s after user stops typing)
   void _onSearchChanged(String query) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
@@ -99,39 +99,39 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6), //
-      body: SafeArea( //
-        child: Column( //
+      backgroundColor: const Color(0xFFF3F4F6),
+      body: SafeArea(
+        child: Column(
           children: [
-            _buildTopBar(), //
-            Expanded( //
+            _buildTopBar(),
+            Expanded(
               child: isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5))) //
-                  : RefreshIndicator( //
-                onRefresh: _loadBooksData, //
-                color: const Color(0xFF4F46E5), //
-                child: SingleChildScrollView( //
-                  physics: const AlwaysScrollableScrollPhysics(), //
-                  padding: const EdgeInsets.all(12), //
-                  child: Column( //
-                    crossAxisAlignment: CrossAxisAlignment.start, //
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
+                  : RefreshIndicator(
+                onRefresh: _loadBooksData,
+                color: const Color(0xFF4F46E5),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSearchBar(), //
-                      const SizedBox(height: 16), //
-                      _buildGenreChips(), //
-                      const SizedBox(height: 20), //
+                      _buildSearchBar(),
+                      const SizedBox(height: 16),
+                      _buildGenreChips(),
+                      const SizedBox(height: 20),
 
                       // 👈 Only render if bestsellers are present and we are not searching
                       if (bestsellers.isNotEmpty) ...[
-                        _buildSectionTitle('🔥 Bestsellers'), //
-                        const SizedBox(height: 12), //
-                        _buildBestsellerRow(), //
-                        const SizedBox(height: 20), //
+                        _buildSectionTitle('🔥 Bestsellers'),
+                        const SizedBox(height: 12),
+                        _buildBestsellerRow(),
+                        const SizedBox(height: 20),
                       ],
 
                       _buildSectionTitle(_searchController.text.isEmpty ? '📚 All Books' : '🔍 Search Results'),
-                      const SizedBox(height: 12), //
-                      _buildAllBooksGrid(), //
+                      const SizedBox(height: 12),
+                      _buildAllBooksGrid(),
                     ],
                   ),
                 ),
@@ -140,67 +140,66 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(), //
+      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
   Widget _buildTopBar() {
-    return Container( //
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), //
-      color: const Color(0xFF4F46E5), //
-      child: Row( //
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: const Color(0xFF4F46E5),
+      child: Row(
         children: [
-          Column( //
-            crossAxisAlignment: CrossAxisAlignment.start, //
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome back! 👋', //
-                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)), //
-              Text('BookStore', //
-                  style: GoogleFonts.poppins( //
-                    color: Colors.white, //
-                    fontSize: 20, //
-                    fontWeight: FontWeight.bold, //
-                  )), //
+              Text('Welcome back! 👋',
+                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+              Text('BookStore',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  )),
             ],
           ),
-          const Spacer(), //
-          IconButton( //
-            icon: const Icon(Icons.favorite_border, color: Colors.white), //
-            onPressed: () => Navigator.push(context, //
-                MaterialPageRoute(builder: (_) => const WishlistScreen())), //
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.favorite_border, color: Colors.white),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const WishlistScreen())),
           ),
-          IconButton( //
-            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white), //
-            onPressed: () => Navigator.push(context, //
-                MaterialPageRoute(builder: (_) => const CartScreen())), //
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CartScreen())),
           ),
         ],
       ),
     );
   }
 
-  // 👈 7. Integrated Controller Hooks and Clear Triggers
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16), //
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white, //
-        borderRadius: BorderRadius.circular(12), //
-        border: Border.all(color: Colors.grey.shade200), //
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row( //
+      child: Row(
         children: [
-          const Icon(Icons.search, color: Color(0xFF4F46E5)), //
-          const SizedBox(width: 8), //
-          Expanded( //
+          const Icon(Icons.search, color: Color(0xFF4F46E5)),
+          const SizedBox(width: 8),
+          Expanded(
             child: TextField(
-              controller: _searchController, // Binds our state values
-              onChanged: _onSearchChanged, // Calls custom execution timer
+              controller: _searchController,
+              onChanged: _onSearchChanged,
               style: GoogleFonts.poppins(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Search books, authors...', //
-                hintStyle: GoogleFonts.poppins(color: Colors.grey, fontSize: 14), //
-                border: InputBorder.none, //
+                hintText: 'Search books, authors...',
+                hintStyle: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+                border: InputBorder.none,
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey, size: 18),
@@ -219,32 +218,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildGenreChips() {
-    return SizedBox( //
-      height: 36, //
-      child: ListView.separated( //
-        scrollDirection: Axis.horizontal, //
-        itemCount: genres.length, //
-        separatorBuilder: (_, __) => const SizedBox(width: 8), //
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: genres.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final genre = genres[index]; //
-          final isSelected = selectedGenre == genre; //
-          return GestureDetector( //
-            onTap: () => setState(() => selectedGenre = genre), //
-            child: Container( //
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), //
-              decoration: BoxDecoration( //
-                color: isSelected ? const Color(0xFF4F46E5) : Colors.white, //
-                borderRadius: BorderRadius.circular(99), //
-                border: Border.all( //
-                  color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300, //
+          final genre = genres[index];
+          final isSelected = selectedGenre == genre;
+          return GestureDetector(
+            onTap: () => setState(() => selectedGenre = genre),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300,
                 ),
               ),
-              child: Text( //
-                genre, //
-                style: GoogleFonts.poppins( //
-                  fontSize: 12, //
-                  fontWeight: FontWeight.w500, //
-                  color: isSelected ? Colors.white : Colors.grey.shade700, //
+              child: Text(
+                genre,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? Colors.white : Colors.grey.shade700,
                 ),
               ),
             ),
@@ -255,86 +254,91 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBestsellerRow() {
-    if (bestsellers.isEmpty) { //
-      return Center( //
-        child: Padding( //
-          padding: const EdgeInsets.symmetric(vertical: 20), //
-          child: Text('No bestsellers available', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)), //
+    if (bestsellers.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Text('No bestsellers available', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
         ),
       );
     }
-    return SizedBox( //
-      height: 140, //
-      child: ListView.separated( //
-        scrollDirection: Axis.horizontal, //
-        itemCount: bestsellers.length, //
-        separatorBuilder: (_, __) => const SizedBox(width: 8), //
+    return SizedBox(
+      height: 140,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: bestsellers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final book = bestsellers[index]; //
-          return GestureDetector( //
+          final book = bestsellers[index];
+          return GestureDetector(
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => ReviewsScreen(
-                  bookId: book['bid'] ?? 0, // 👈 ADDED CONSTRUCTOR INJECTION
+                  bookId: book['bid'] ?? 0,
                   bookTitle: book['title'] ?? 'Untitled',
                   bookAuthor: book['author'] ?? 'Unknown Author',
                   bookColor: book['color'] ?? const Color(0xFF4F46E5),
                 ),
               ),
             ),
-            child: Container( //
-              width: 95, //
-              padding: const EdgeInsets.all(6), //
-              decoration: BoxDecoration( //
-                color: Colors.white, //
-                borderRadius: BorderRadius.circular(10), //
-                border: Border.all(color: Colors.grey.shade100), //
+            child: Container(
+              width: 95,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade100),
               ),
-              child: Column( //
-                crossAxisAlignment: CrossAxisAlignment.start, //
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container( //
-                    height: 70, //
-                    width: double.infinity, //
-                    decoration: BoxDecoration( //
-                      color: Colors.grey.shade100, //
-                      borderRadius: BorderRadius.circular(6), //
+                  Container(
+                    height: 70,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: ClipRRect( //
-                      borderRadius: BorderRadius.circular(6), //
-                      child: Image.network( //
-                        book['coverUrl'], //
-                        fit: BoxFit.cover, //
-                        errorBuilder: (context, error, stackTrace) => Container( //
-                          color: book['color'], //
-                          child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)), //
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: book['coverUrl'] != null && book['coverUrl'].toString().isNotEmpty
+                          ? Image.network(
+                        book['coverUrl'],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: book['color'] ?? const Color(0xFF4F46E5),
+                          child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)),
                         ),
+                      )
+                          : Container(
+                        color: book['color'] ?? const Color(0xFF4F46E5),
+                        child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4), //
-                  Text(book['title'], //
-                      maxLines: 1, //
-                      overflow: TextOverflow.ellipsis, //
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10)), //
-                  Text(book['author'], //
-                      maxLines: 1, //
-                      overflow: TextOverflow.ellipsis, //
-                      style: GoogleFonts.poppins(color: Colors.grey, fontSize: 8)), //
-                  const SizedBox(height: 2), //
-                  Row( //
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween, //
+                  const SizedBox(height: 4),
+                  Text(book['title'] ?? 'Untitled',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10)),
+                  Text(book['author'] ?? 'Unknown Author',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(color: Colors.grey, fontSize: 8)),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(book['price'], //
-                          style: GoogleFonts.poppins( //
-                            color: const Color(0xFF4F46E5), //
-                            fontWeight: FontWeight.bold, //
-                            fontSize: 10, //
-                          )), //
-                      Row(children: [ //
-                        const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10), //
-                        Text('${book['ratings']}', style: GoogleFonts.poppins(fontSize: 8)), //
+                      Text(book['price'] ?? '₦0',
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF4F46E5),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          )),
+                      Row(children: [
+                        const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
+                        Text('${book['ratings'] ?? 0.0}', style: GoogleFonts.poppins(fontSize: 8)),
                       ]),
                     ],
                   ),
@@ -373,12 +377,11 @@ class _HomeScreenState extends State<HomeScreen> {
       itemBuilder: (context, index) {
         final book = booksList[index];
         return GestureDetector(
-
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ReviewsScreen(
-                bookId: book['bid'] ?? 0, // 👈 ADDED CONSTRUCTOR INJECTION
+                bookId: book['bid'] ?? 0,
                 bookTitle: book['title'] ?? 'Untitled',
                 bookAuthor: book['author'] ?? 'Unknown Author',
                 bookColor: book['color'] ?? const Color(0xFF4F46E5),
@@ -404,26 +407,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
+                      child: book['coverUrl'] != null && book['coverUrl'].toString().isNotEmpty
+                          ? Image.network(
                         book['coverUrl'],
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
-                          color: book['color'],
+                          color: book['color'] ?? const Color(0xFF4F46E5),
                           child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)),
                         ),
+                      )
+                          : Container(
+                        color: book['color'] ?? const Color(0xFF4F46E5),
+                        child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  book['title'],
+                  book['title'] ?? 'Untitled',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
                 ),
                 Text(
-                  book['author'],
+                  book['author'] ?? 'Unknown Author',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(color: Colors.grey, fontSize: 8),
@@ -434,13 +442,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                       book['price'],
+                        book['price'] ?? '₦0',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.poppins(
                           color: const Color(0xFF4F46E5),
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 10, // Reverted card text sizing alignment constraint
                         ),
                       ),
                     ),
@@ -532,23 +540,34 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold));
   }
-
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: (index) {
+        // 1. Instantly update the bottom bar UI state safely
         setState(() => currentIndex = index);
-        switch (index) {
-          case 1:
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen())).then((_) => _loadBooksData());
-            break;
-          case 2:
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
-            break;
-          case 3:
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-            break;
-        }
+
+        // 2. Delay the route execution until the layout build phase completes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+
+          switch (index) {
+            case 1:
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()))
+                  .then((_) => _loadBooksData());
+              break;
+            case 2:
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
+              break;
+            case 3:
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))
+                  .then((_) {
+                // Reset tab highlights back to Home when returning from Profile
+                if (mounted) setState(() => currentIndex = 0);
+              });
+              break;
+          }
+        });
       },
       selectedItemColor: const Color(0xFF4F46E5),
       unselectedItemColor: Colors.grey,

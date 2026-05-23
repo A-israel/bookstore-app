@@ -19,10 +19,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BookStore',
-      debugShowCheckedModeBanner: false, // removes the red DEBUG banner
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4F46E5), // your indigo/purple brand color
+          seedColor: const Color(0xFF4F46E5),
         ),
         textTheme: GoogleFonts.poppinsTextTheme(), // clean modern fontr
         useMaterial3: true,
