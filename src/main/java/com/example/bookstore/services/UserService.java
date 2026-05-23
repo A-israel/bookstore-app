@@ -54,6 +54,7 @@ public class UserService {
         old.setShipping_address(ureq.getShipping_address());
         old.setPassword(hash.getHashed(ureq.getPassword()));
         old.setPayment_method(ureq.getPayment_method());
+        old.setEmail(ureq.getEmail());
 
         return rep.save(old) != null;
     }

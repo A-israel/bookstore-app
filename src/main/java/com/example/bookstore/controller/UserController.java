@@ -8,6 +8,7 @@ import com.example.bookstore.tables.Users;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,15 +48,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
     }
 
-    @PutMapping("/update")
-    public ResponseEntity<?> updateProfile(@RequestBody UserReq ureq) {
-        // Identify the user by the email in the request body
-        boolean updated = userservice.changeUser(ureq);
-        if (updated) {
-            return ResponseEntity.ok("Profile updated successfully");
-        }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-    }
+
 
 
     @DeleteMapping("/delete/{email}")
@@ -95,6 +88,35 @@ public class UserController {
             return ResponseEntity.ok(profileData);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        }
+    }
+    @PutMapping("/profile/update")
+    public ResponseEntity<?> updateProfile(@RequestBody UserReq ureq) {
+
+        // 1. Extract context safely from the authenticated global holder instance
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+
+        String loggedInEmail = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            loggedInEmail = authentication.getName(); // Grabs the login email address strings from the validated JWT token
+        }
+
+        // 2. Clear Guard Block against anonymous traffic attempts
+        if (loggedInEmail == null || loggedInEmail.equals("anonymousUser")) {
+            return ResponseEntity.status(401).body("Error: Session verification failed or token expired. Please re-login. ❌");
+        }
+
+        // 3. Bind the authenticated email to your request DTO
+        ureq.setEmail(loggedInEmail);
+
+        // 4. Run your database operation function
+        boolean success = userservice.changeUser(ureq);
+
+        if (success) {
+            return ResponseEntity.ok("Profile updated successfully! ✅");
+        } else {
+            return ResponseEntity.badRequest().body("Failed to update profile records ❌");
         }
     }
 }

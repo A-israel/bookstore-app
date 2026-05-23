@@ -34,12 +34,15 @@ public class Secure {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/profile/update").authenticated()
                         .requestMatchers("/api/books", "/api/books/**").permitAll()
-                        .requestMatchers("/api/cart","/api/cart/**").permitAll()
+                        .requestMatchers("/api/cart/**").authenticated()
                         .requestMatchers("/api/wishlist","/api/wishlist/**").permitAll()
-                        .requestMatchers("/api/orders","/api/orders/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/orders/**").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reviews/book/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reviews/add").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reviews/user").permitAll()
+                        .requestMatchers("/api/admin/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

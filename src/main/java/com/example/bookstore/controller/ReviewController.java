@@ -7,6 +7,7 @@ import com.example.bookstore.repositories.ReviewRepository;
 import com.example.bookstore.repositories.BookRepository;
 import com.example.bookstore.repositories.UserRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -82,5 +83,23 @@ public class ReviewController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error posting entry: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/user")
+    public List<Reviews> getUserReviews() {
+
+        int userId = 1;
+
+        // Extracting user via the established email authentication strategy used in your working addReview endpoint
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        if (email != null && !email.equals("anonymousUser")) {
+            Users user = userRepository.findUsersByEmail(email);
+            if (user != null) {
+                userId = user.getUid();
+            }
+        }
+
+        return reviewRepository.findByUsersUid(userId);
     }
 }
