@@ -33,4 +33,9 @@ public interface BookRepository extends JpaRepository<Books, Integer> {
     @Transactional
     @Query(value = "DELETE FROM reviews WHERE bid = :bid", nativeQuery = true)
     void clearReviewReferences(@Param("bid") int bid);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM wishlist WHERE bid = :bid", nativeQuery = true)
+    void clearWishlistReferences(@Param("bid") int bid);
 }

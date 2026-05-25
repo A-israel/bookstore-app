@@ -4,7 +4,7 @@ import com.example.bookstore.repositories.*;
 import com.example.bookstore.tables.Books;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize; // 🟢 IMPORT THIS
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -53,10 +53,6 @@ public class AdminController {
         return ResponseEntity.ok(stats);
     }
 
-
-
-
-    // 👥 1. READ USERS PAYLOAD (Path: GET /api/admin/users)
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers() {
         try {
@@ -79,7 +75,6 @@ public class AdminController {
         }
     }
 
-    // 📦 2. READ ORDERS PAYLOAD (Path: GET /api/admin/orders)
     @GetMapping("/orders")
     public ResponseEntity<?> getAllSystemOrders() {
         try {
@@ -90,7 +85,7 @@ public class AdminController {
             java.util.List<Map<String, Object>> safeOrders = orderRepository.findAll().stream().map(order -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", order.getId());
-                map.put("tracking_number", order.getTracking_number()); // Make sure this property matches your order table column signature!
+                map.put("tracking_number", order.getTracking_number());
                 map.put("total_price", order.getTotal_price());
                 map.put("status", order.getStatus());
                 map.put("shipping_address", order.getShipping_address());
@@ -101,7 +96,7 @@ public class AdminController {
             return ResponseEntity.badRequest().body("Failed to retrieve system order context lines: " + e.getMessage());
         }
     }
-    // ➕ 1. ADD BOOK
+
     @PostMapping("/books/add")
     public ResponseEntity<?> addBook(@RequestBody Books book) {
         try {
@@ -142,19 +137,14 @@ public class AdminController {
         }
 
         try {
-            // 1. Clear references out of the cart table (temporary user data)
-            // assuming you have injected your CartRepository or can use a native query
+
              cartRepository.deleteByBooks_Bid(id);
 
-            // If you don't have repositories injected for those tables yet,
-            // you can add custom native deleting methods inside your BookRepository!
-
-            // Execute the sequential cleans safely:
             bookRepository.clearCartReferences(id);
             bookRepository.clearOrderItemReferences(id);
             bookRepository.clearReviewReferences(id);
+            bookRepository.clearWishlistReferences(id);
 
-            // 2. Now that the dependencies are gone, delete the parent book record
             bookRepository.deleteById(id);
 
             return ResponseEntity.ok("Book and all associated dependencies deleted successfully! ✅");
