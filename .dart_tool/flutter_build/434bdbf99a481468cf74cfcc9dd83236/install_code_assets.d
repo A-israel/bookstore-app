@@ -1,0 +1,1 @@
+ C:\\Users\\Israel\\StudioProjects\\bookstore-app\\.dart_tool\\flutter_build\\434bdbf99a481468cf74cfcc9dd83236\\native_assets.json:  C:\\Users\\Israel\\StudioProjects\\bookstore-app\\.dart_tool\\hooks_runner\\shared\\win32\\build\\dbb4653d72\\win32_windows_x64.dll

@@ -1,5 +1,5 @@
 // lib/screens/home_screen.dart
-import 'dart:async'; // 👈 1. Added for Timer/Debounce logic
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../cart/cart_screen.dart';
@@ -21,10 +21,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedGenre = 'All';
   bool isLoading = true;
   List<Map<String, dynamic>> books = [];
-  List<Map<String, dynamic>> searchedBooks = []; // 👈 2. Holds dynamic backend search query data
+  List<Map<String, dynamic>> searchedBooks = [];
   List<String> genres = ['All'];
 
-  // 👈 3. Controllers to track inputs and handle timing windows
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounceTimer;
 
@@ -36,7 +35,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    // 👈 4. Always dispose of streams and inputs to prevent system leaks
     _searchController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
@@ -45,7 +43,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadBooksData() async {
     final fetchedBooks = await ApiService.fetchBooks();
 
-    // Extract unique genres directly from the database response payload
     final uniqueGenres = fetchedBooks
         .map((book) => book['genre']?.toString() ?? 'General')
         .where((genre) => genre.trim().isNotEmpty)
@@ -56,14 +53,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       books = fetchedBooks;
-      searchedBooks = fetchedBooks; // Fallback matches full dataset on initialize
-      // Safely builds the chip items ensuring 'All' sits cleanly at index 0
+      searchedBooks = fetchedBooks;
       genres = ['All', ...uniqueGenres];
       isLoading = false;
     });
   }
 
-  // 👈 5. Debounce processing sequence (Waits 1.3s after user stops typing)
   void _onSearchChanged(String query) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
@@ -74,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() => isLoading = true);
-      // Calls your endpoint: /api/books/search?query=...
       final searchResults = await ApiService.searchBooks(query);
 
       setState(() {
@@ -84,14 +78,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // 👈 6. Combined Strategy: Applies genre chip constraints over active search queries
   List<Map<String, dynamic>> get filteredBooks {
     if (selectedGenre == 'All') return searchedBooks;
     return searchedBooks.where((b) => b['genre'] == selectedGenre).toList();
   }
 
   List<Map<String, dynamic>> get bestsellers {
-    // Hide bestsellers banner while searching so users can focus on direct results
     if (_searchController.text.isNotEmpty) return [];
     return books.where((b) => b['isBestseller'] == true).toList();
   }
@@ -101,43 +93,45 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
-                  : RefreshIndicator(
-                onRefresh: _loadBooksData,
-                color: const Color(0xFF4F46E5),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
+            : RefreshIndicator(
+          onRefresh: _loadBooksData,
+          color: const Color(0xFF4F46E5),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopBar(),
+                Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildSearchBar(),
                       const SizedBox(height: 16),
-                      _buildGenreChips(),
+                      _buildSectionTitle('📚 Browse Genres'),
+                      const SizedBox(height: 10),
+                      _buildGenreChips(), // 👈 Scrolls Horizontally Perfectly
                       const SizedBox(height: 20),
 
-                      // 👈 Only render if bestsellers are present and we are not searching
                       if (bestsellers.isNotEmpty) ...[
                         _buildSectionTitle('🔥 Bestsellers'),
                         const SizedBox(height: 12),
-                        _buildBestsellerRow(),
+                        _buildBestsellerRow(), // 👈 Scrolls Horizontally Perfectly
                         const SizedBox(height: 20),
                       ],
 
-                      _buildSectionTitle(_searchController.text.isEmpty ? '📚 All Books' : '🔍 Search Results'),
+                      _buildSectionTitle(_searchController.text.isEmpty ? '✨ All Books' : '🔍 Search Results'),
                       const SizedBox(height: 12),
-                      _buildAllBooksGrid(),
+                      _buildAllBooksGrid(), // 👈 Embedded safely inside vertical container view block
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -146,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       color: const Color(0xFF4F46E5),
       child: Row(
         children: [
@@ -219,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildGenreChips() {
     return SizedBox(
-      height: 36,
+      height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: genres.length,
@@ -238,12 +232,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300,
                 ),
               ),
-              child: Text(
-                genre,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : Colors.grey.shade700,
+              child: Center(
+                child: Text(
+                  genre,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected ? Colors.white : Colors.grey.shade700,
+                  ),
                 ),
               ),
             ),
@@ -254,20 +250,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBestsellerRow() {
-    if (bestsellers.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Text('No bestsellers available', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
-        ),
-      );
-    }
     return SizedBox(
-      height: 140,
+      height: 155,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: bestsellers.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final book = bestsellers[index];
           return GestureDetector(
@@ -283,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             child: Container(
-              width: 95,
+              width: 110,
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -294,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    height: 70,
+                    height: 80,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
@@ -330,16 +318,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(book['price'] ?? '₦0',
-                          style: GoogleFonts.poppins(
-                            color: const Color(0xFF4F46E5),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          )),
-                      Row(children: [
-                        const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
-                        Text('${book['ratings'] ?? 0.0}', style: GoogleFonts.poppins(fontSize: 8)),
-                      ]),
+                      Text(
+                        book['price'] != null ? '₦${book['price']}' : '₦0',
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF4F46E5),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Color(0xFFF59E0B), size: 10),
+                          Text('${book['ratings'] ?? 0.0}', style: GoogleFonts.poppins(fontSize: 8)),
+                        ],
+                      ),
                     ],
                   ),
                 ],
@@ -368,10 +360,10 @@ class _HomeScreenState extends State<HomeScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 0.62,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisCount: 2, // Changed to 2 for optimal visibility layout dimensions on mobile emulators
+        childAspectRatio: 0.72,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
       ),
       itemCount: booksList.length,
       itemBuilder: (context, index) {
@@ -389,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
@@ -413,30 +405,30 @@ class _HomeScreenState extends State<HomeScreen> {
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: book['color'] ?? const Color(0xFF4F46E5),
-                          child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)),
+                          child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 24)),
                         ),
                       )
                           : Container(
                         color: book['color'] ?? const Color(0xFF4F46E5),
-                        child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 20)),
+                        child: const Center(child: Icon(Icons.menu_book, color: Colors.white, size: 24)),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   book['title'] ?? 'Untitled',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 10),
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
                 ),
                 Text(
                   book['author'] ?? 'Unknown Author',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 8),
+                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 10),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -448,12 +440,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: GoogleFonts.poppins(
                           color: const Color(0xFF4F46E5),
                           fontWeight: FontWeight.bold,
-                          fontSize: 10, // Reverted card text sizing alignment constraint
+                          fontSize: 12,
                         ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.favorite_border, color: Colors.redAccent, size: 16),
+                      icon: const Icon(Icons.favorite_border, color: Colors.redAccent, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       onPressed: () async {
@@ -489,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       },
                     ),
-                    const SizedBox(width: 2),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () async {
                         final int bookId = book['bid'] ?? 0;
@@ -519,12 +511,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.all(3),
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: const Color(0xFF4F46E5),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 16),
+                        child: const Icon(Icons.add, color: Colors.white, size: 18),
                       ),
                     )
                   ],
@@ -538,16 +530,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold));
+    return Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)));
   }
+
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: (index) {
-        // 1. Instantly update the bottom bar UI state safely
         setState(() => currentIndex = index);
 
-        // 2. Delay the route execution until the layout build phase completes
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
 
@@ -562,7 +553,6 @@ class _HomeScreenState extends State<HomeScreen> {
             case 3:
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))
                   .then((_) {
-                // Reset tab highlights back to Home when returning from Profile
                 if (mounted) setState(() => currentIndex = 0);
               });
               break;
