@@ -3,6 +3,7 @@ package com.example.bookstore.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 public class Secure {
 
     private final JwtFilter jwtFilter;
@@ -34,6 +36,12 @@ public class Secure {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+//                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/admin/users").hasRole("ADMIN")
+//                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/admin/orders").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.DELETE, "/api/admin/books/delete/{id}").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.PUT, "/api/admin/books/update/{id}").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.POST, "/api/admin/books/add").hasRole("ADMIN")
                         .requestMatchers("/api/auth/profile/update").authenticated()
                         .requestMatchers("/api/books", "/api/books/**").permitAll()
                         .requestMatchers("/api/cart/**").authenticated()
@@ -42,7 +50,6 @@ public class Secure {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reviews/book/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/reviews/add").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reviews/user").permitAll()
-                        .requestMatchers("/api/admin/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

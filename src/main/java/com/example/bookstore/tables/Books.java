@@ -24,6 +24,7 @@ public class Books {
     private boolean isBestseller;
     private LocalDate releaseDate;
 
+
     public int getBid() {
         return bid;
     }
