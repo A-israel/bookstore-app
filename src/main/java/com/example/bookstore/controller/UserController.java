@@ -84,6 +84,7 @@ public class UserController {
             profileData.put("email", user.getEmail()); //
             profileData.put("shipping_address", user.getShipping_address()); //
             profileData.put("payment_method", user.getPayment_method()); //
+            profileData.put("role", user.getRole());
 
             return ResponseEntity.ok(profileData);
         } catch (Exception e) {

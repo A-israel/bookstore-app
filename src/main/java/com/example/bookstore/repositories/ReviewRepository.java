@@ -8,5 +8,6 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Reviews, Integer> {
     List<Reviews> findByUsersUid(int uid);
     List<Reviews> findByBooksBidOrderByCreatedAtDesc(Integer bid);
+    void  deleteByBooks_Bid(int bid);
 
 }

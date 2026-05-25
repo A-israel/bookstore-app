@@ -13,4 +13,5 @@ public interface OrderRepository extends JpaRepository<Orders, Integer> {
     List<Orders> findByUsersEmailOrderByDateDesc(String email);
     @Query("SELECT o FROM Orders o WHERE o.users.email = :email")
     List<Orders> findMyCustomOrders(@Param("email") String email);
+
 }

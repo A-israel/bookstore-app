@@ -1,9 +1,8 @@
 package com.example.bookstore.controller;
 
+import com.example.bookstore.repositories.*;
 import com.example.bookstore.tables.Books;
-import com.example.bookstore.repositories.BookRepository;
-import com.example.bookstore.repositories.OrderRepository;
-import com.example.bookstore.repositories.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize; // 🟢 IMPORT THIS
 import org.springframework.web.bind.annotation.*;
@@ -14,17 +13,25 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin("*")
-@PreAuthorize("hasRole('ADMIN')") // 🟢 RESTRICTS ALL ENDPOINTS IN THIS CONTROLLER TO ADMINS ONLY
 public class AdminController {
+
 
     private final BookRepository bookRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemsRepository oiRepository;
     private final UserRepository userRepository;
+    private final CartRepository cartRepository;
+    private final WishlistRepository wishRepository;
+    private final ReviewRepository reviewRepository;
 
-    public AdminController(BookRepository bookRepository, OrderRepository orderRepository, UserRepository userRepository) {
+    public AdminController(BookRepository bookRepository,OrderItemsRepository oiRepository, ReviewRepository reviewRepository, OrderRepository orderRepository, UserRepository userRepository,CartRepository cartRepository,WishlistRepository wishRepository) {
         this.bookRepository = bookRepository;
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
+        this.cartRepository = cartRepository;
+        this.wishRepository = wishRepository;
+        this.reviewRepository = reviewRepository;
+        this.oiRepository = oiRepository;
     }
 
     @GetMapping("/dashboard-stats")
@@ -46,29 +53,113 @@ public class AdminController {
         return ResponseEntity.ok(stats);
     }
 
-    @PostMapping("/books")
-    public ResponseEntity<Books> addBook(@RequestBody Books book) {
-        Books savedBook = bookRepository.save(book);
-        return ResponseEntity.ok(savedBook);
+
+
+
+    // 👥 1. READ USERS PAYLOAD (Path: GET /api/admin/users)
+    @GetMapping("/users")
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            java.util.List<Map<String, Object>> safeUsers = userRepository.findAll().stream().map(user -> {
+                org.springframework.security.core.Authentication auth =
+                        org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                System.out.println("Active Username connecting: " + auth.getName());
+                System.out.println("Authorities assigned to token session: " + auth.getAuthorities());
+                Map<String, Object> map = new HashMap<>();
+                map.put("uid", user.getUid());
+                map.put("fullname", user.getFullname());
+                map.put("email", user.getEmail());
+                map.put("role", user.getRole());
+                map.put("shipping_address", user.getShipping_address());
+                return map;
+            }).toList();
+            return ResponseEntity.ok(safeUsers);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to retrieve directory: " + e.getMessage());
+        }
     }
 
+    // 📦 2. READ ORDERS PAYLOAD (Path: GET /api/admin/orders)
+    @GetMapping("/orders")
+    public ResponseEntity<?> getAllSystemOrders() {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            System.out.println("Active Username connecting: " + auth.getName());
+            System.out.println("Authorities assigned to token session: " + auth.getAuthorities());
+            java.util.List<Map<String, Object>> safeOrders = orderRepository.findAll().stream().map(order -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", order.getId());
+                map.put("tracking_number", order.getTracking_number()); // Make sure this property matches your order table column signature!
+                map.put("total_price", order.getTotal_price());
+                map.put("status", order.getStatus());
+                map.put("shipping_address", order.getShipping_address());
+                return map;
+            }).toList();
+            return ResponseEntity.ok(safeOrders);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to retrieve system order context lines: " + e.getMessage());
+        }
+    }
+    // ➕ 1. ADD BOOK
+    @PostMapping("/books/add")
+    public ResponseEntity<?> addBook(@RequestBody Books book) {
+        try {
+           Books savedBook = bookRepository.save(book);
+            return ResponseEntity.status(201).body(savedBook);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to add book: " + e.getMessage());
+        }
+    }
+
+    @Transactional
     @PutMapping("/books/{id}")
     public ResponseEntity<Books> updateBook(@PathVariable("id") int id, @RequestBody Books bookDetails) {
         Books book = bookRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Book entry target not found"));
 
+        System.out.println("Updating Book ID: " + id);
+        System.out.println("Incoming Title: " + bookDetails.getTitle());
+        System.out.println("Incoming Bestseller Status: " + bookDetails.isBestseller());
+
         book.setTitle(bookDetails.getTitle());
         book.setAuthor(bookDetails.getAuthor());
         book.setPrice(bookDetails.getPrice());
+        book.setDescription(bookDetails.getDescription());
+        book.setGenre(bookDetails.getGenre());
         book.setStock(bookDetails.getStock());
+        book.setCoverUrl(bookDetails.getCoverUrl());
+        book.setBestseller(bookDetails.isBestseller());
 
         Books updatedBook = bookRepository.save(book);
         return ResponseEntity.ok(updatedBook);
     }
 
-    @DeleteMapping("/books/{id}")
+    @DeleteMapping("/books/delete/{id}")
     public ResponseEntity<?> deleteBook(@PathVariable("id") int id) {
-        bookRepository.deleteById(id);
-        return ResponseEntity.ok("Book deleted successfully from inventory registries.");
+        if (!bookRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            // 1. Clear references out of the cart table (temporary user data)
+            // assuming you have injected your CartRepository or can use a native query
+             cartRepository.deleteByBooks_Bid(id);
+
+            // If you don't have repositories injected for those tables yet,
+            // you can add custom native deleting methods inside your BookRepository!
+
+            // Execute the sequential cleans safely:
+            bookRepository.clearCartReferences(id);
+            bookRepository.clearOrderItemReferences(id);
+            bookRepository.clearReviewReferences(id);
+
+            // 2. Now that the dependencies are gone, delete the parent book record
+            bookRepository.deleteById(id);
+
+            return ResponseEntity.ok("Book and all associated dependencies deleted successfully! ✅");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to delete book entry: " + e.getMessage());
+        }
     }
 }

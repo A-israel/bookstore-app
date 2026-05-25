@@ -14,6 +14,6 @@ public interface CartRepository extends JpaRepository<CartItems, Integer> {
     Optional<CartItems> findByUsersUidAndBooksBid(int userId, int bookId);
     Optional<CartItems> findByBooks_Bid(int bookId);
 
-    // Clear cart contents targeting user relationship ID
     void deleteByUsersUid(int userId);
+    void deleteByBooks_Bid (int bid);
 }
