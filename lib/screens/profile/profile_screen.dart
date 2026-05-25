@@ -164,6 +164,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── ⚙️ SETTINGS SLOTS ──
   Widget _buildMenuOptions() {
+    // 1. Define all your base menu slots
+    final baseItems = [
+      {'icon': Icons.location_on_outlined, 'label': 'Shipping Address'},
+      {'icon': Icons.credit_card_outlined, 'label': 'Payment Methods'},
+      {'icon': Icons.lock_outlined, 'label': 'Update Profile'},
+    ];
+
+    // 2. Extract the user details to verify permissions
+    final String userRole = _profileData?['role']?.toString() ?? 'USER';
+    final String userEmail = _profileData?['email']?.toString() ?? '';
+
+    // 3. Create a clean dynamic list out of your base items
+    List<Map<String, dynamic>> authorizedItems = List.from(baseItems);
+
+    // 4. Only inject the Admin option if they pass the gatekeeper check!
+    if (userRole.toUpperCase() == 'ADMIN' ||
+        userRole.toUpperCase() == 'ROLE_ADMIN' ||
+        userEmail == 'Saint@gmail.com') { // 👈 Bypasses via email until backend payload updates
+
+      authorizedItems.add({
+        'icon': Icons.admin_panel_settings_outlined,
+        'label': 'Admin Panel'
+      });
+    }
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -171,9 +196,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: menuItems.length,
+        itemCount: authorizedItems.length, // 👈 Switch to your filtered list count
         itemBuilder: (context, index) {
-          final item = menuItems[index];
+          final item = authorizedItems[index]; // 👈 Read from filtered list
           String? subtext;
 
           if (item['label'] == 'Shipping Address') {
@@ -197,7 +222,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : null,
                 trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                 onTap: () {
-                  // 🟢 SAFELY HANDLE INTERACTIVE ROUTING HERE
                   if (item['label'] == 'Update Profile') {
                     _showEditProfileSheet();
                   } else if (item['label'] == 'Shipping Address') {
@@ -205,7 +229,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   } else if (item['label'] == 'Payment Methods') {
                     _showPaymentMethodSheet(subtext ?? 'Cash on Delivery');
                   } else if (item['label'] == 'Admin Panel') {
-                    // ✅ Fixed: Triggers only when tapped by the user
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const AdminScreen()),
@@ -213,7 +236,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   }
                 },
               ),
-              if (index < menuItems.length - 1)
+              if (index < authorizedItems.length - 1) // 👈 Switch to filtered list length
                 Divider(height: 1, indent: 56, color: Colors.grey.shade100),
             ],
           );

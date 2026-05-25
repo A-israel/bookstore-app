@@ -4,13 +4,13 @@ import 'package:http/http.dart' as http;
 
 class AuthService {
 
-  static const String baseUrl = 'http://localhost:8080/api/auth';
+  static const String baseUrl = 'http://10.0.2.2:8080';
 
   // LOGIN CONNECTION
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
+        Uri.parse('$baseUrl/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -37,7 +37,7 @@ class AuthService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/register'),
+        Uri.parse('$baseUrl/api/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'fullname': fullname,

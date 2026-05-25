@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSearchChanged(String query) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
-    _debounceTimer = Timer(const Duration(milliseconds: 1300), () async {
+    _debounceTimer = Timer(const Duration(milliseconds: 420), () async {
       if (query.trim().isEmpty) {
         setState(() => searchedBooks = books);
         return;
@@ -442,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        book['price'] ?? '₦0',
+                        book['price'] != null ? '₦${book['price']}' : '₦0',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.poppins(

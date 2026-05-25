@@ -8,14 +8,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // Replace with your computer's IP if testing on a physical device
-  static const String baseUrl = 'http://10.93.190.4:8080/api';
+  static const String baseUrl = 'http://10.0.2.2:8080';
 
+  static const _storage = FlutterSecureStorage();
 
-
-  // Fetch all books from Spring Boot
   static Future<List<Map<String, dynamic>>> fetchBooks() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/books/all'));
+      final response = await http.get(Uri.parse('$baseUrl/api/books/all'));
       print("Spring Boot Response Code: ${response.statusCode}");
       print("Spring Boot Response Body: ${response.body}");
       if (response.statusCode == 200) {
@@ -47,7 +46,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> searchBooks(String query) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/books/search?query=${Uri.encodeComponent(query)}'),
+        Uri.parse('$baseUrl/api/books/search?query=${Uri.encodeComponent(query)}'),
       );
 
       if (response.statusCode == 200) {
@@ -70,7 +69,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> fetchCart() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/cart'),
+        Uri.parse('$baseUrl/api/cart'),
         headers: await getAuthHeaders(), // 👈 CRITICAL: Passes token to secure cart endpoint
       );
 
@@ -91,7 +90,7 @@ class ApiService {
   static Future<bool> addToCart(int bookId) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/cart/add?bookId=$bookId'),
+        Uri.parse('$baseUrl/api/cart/add?bookId=$bookId'),
         headers: await getAuthHeaders(), // 👈 Passes unified headers
       );
 
@@ -109,7 +108,7 @@ class ApiService {
   static Future<bool> updateCartQuantity(int cartItemId, int newQuantity) async {
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/cart/update?cartItemId=$cartItemId&quantity=$newQuantity'),
+        Uri.parse('$baseUrl/api/cart/update?cartItemId=$cartItemId&quantity=$newQuantity'),
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -122,7 +121,7 @@ class ApiService {
   static Future<bool> removeFromCart(int cartItemId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$baseUrl/cart/delete/$cartItemId'),
+        Uri.parse('$baseUrl/api/cart/delete/$cartItemId'),
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -135,7 +134,7 @@ class ApiService {
   // ── FETCH WISHLIST ITEMS ──
   static Future<List<Map<String, dynamic>>> fetchWishlist() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/wishlist'));
+      final response = await http.get(Uri.parse('$baseUrl/api/wishlist'));
 
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
@@ -163,7 +162,7 @@ class ApiService {
   static Future<bool> addToWishlist(int bookId) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/wishlist/add?bookId=$bookId'),
+        Uri.parse('$baseUrl/api/wishlist/add?bookId=$bookId'),
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
@@ -176,7 +175,7 @@ class ApiService {
   static Future<bool> removeFromWishlist(int bookId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$baseUrl/wishlist/remove/$bookId'),
+        Uri.parse('$baseUrl/api/wishlist/remove/$bookId'),
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -188,7 +187,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> fetchOrders() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/orders/user'),
+        Uri.parse('$baseUrl/api/orders/user'),
         headers: await getAuthHeaders(),
       );
       if (response.statusCode == 200) {
@@ -204,7 +203,7 @@ class ApiService {
   static Future<bool> executeCheckout() async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/orders/checkout'),
+        Uri.parse('$baseUrl/api/orders/checkout'),
         headers: await getAuthHeaders(),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -238,7 +237,7 @@ class ApiService {
   static Future<dynamic> fetchReviews(int bookId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/reviews/book/$bookId'),
+        Uri.parse('$baseUrl/api/reviews/book/$bookId'),
         headers: await getAuthHeaders(),
       );
       if (response.statusCode == 200) {
@@ -256,7 +255,7 @@ class ApiService {
     print("Sending Headers: $headers");
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/reviews/add'),
+        Uri.parse('$baseUrl/api/reviews/add'),
         headers: headers,
         body: json.encode({
           'bid': bookId, // Matches backend mapping expectation index key name
@@ -279,7 +278,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> fetchUserReviews() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/reviews/user'),
+        Uri.parse('$baseUrl/api/reviews/user'),
         headers: await getAuthHeaders(),
       );
       if (response.statusCode == 200) {
@@ -296,7 +295,7 @@ class ApiService {
   static Future<Map<String, dynamic>?> fetchUserProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/auth/profile'),
+        Uri.parse('$baseUrl/api/auth/profile'),
         headers: await getAuthHeaders(),
       );
 
@@ -325,7 +324,7 @@ class ApiService {
       headers['Content-Type'] = 'application/json';
 
       final response = await http.put(
-        Uri.parse('$baseUrl/auth/profile/update'),
+        Uri.parse('$baseUrl/api/auth/profile/update'),
         headers: headers, // Pass the combined headers map
         body: json.encode({
           'fullname': fullname,
@@ -345,5 +344,105 @@ class ApiService {
     }
   }
 
+  static Future<List<dynamic>> fetchAllUsers() async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
 
+      // 🛑 TRIPLE CHECK THIS PATH:
+      // It must exactly match what your AdminController @RequestMapping specifies!
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/users'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      print("JWT TOKEN: $token");
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        // This is throwing your "Exception: Server returned status: 403"
+        throw Exception('Server returned status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Error getting master user registry lists: $e");
+      return [];
+    }
+  }
+  static Future<List<dynamic>> fetchAllOrders() async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/admin/orders'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Server returned status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Error getting master purchase lines: $e");
+      return [];
+    }
+  }
+  // ➕ Add Book API Call
+  static Future<bool> addBook(Map<String, dynamic> bookData) async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/books/add'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(bookData),
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      print("Network error adding book: $e");
+      return false;
+    }
+  }
+
+  // 📝 Update Book API Call
+  static Future<bool> updateBook(dynamic bookId, Map<String, dynamic> bookData) async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/admin/books/$bookId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(bookData),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Network error updating book: $e");
+      return false;
+    }
+  }
+
+  // ❌ Delete Book API Call
+  static Future<bool> deleteBook(dynamic bookId) async {
+    try {
+      final token = await _storage.read(key: 'jwt_token');
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/admin/books/delete/$bookId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Network error deleting book: $e");
+      return false;
+    }
+  }
 }

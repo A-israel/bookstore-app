@@ -22,9 +22,16 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   int _totalOrders = 0;
   double _totalRevenue = 0.0;
 
-  // Dynamic lists linked to backend registries
+  Future<void> _refreshCatalog() async {
+    final allBooks = await ApiService.fetchBooks();
+    setState(() {
+      books = List<Map<String, dynamic>>.from(allBooks);
+      _totalBooks = books.length;
+    });
+  }
+
   List<Map<String, dynamic>> books = [];
-  final List<Map<String, dynamic>> users = []; // Populated during your user management iteration
+  final List<Map<String, dynamic>> users = []; // Populated via dynamic account context fetch
   final List<Map<String, dynamic>> orders = []; // Populated via order mapping endpoints
 
   @override
@@ -44,20 +51,32 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       String userRole = profile?['role']?.toString() ?? 'USER';
       String userEmail = profile?['email']?.toString() ?? '';
 
-      print("转向 ADMIN AUTH CHECK - Email: $userEmail, Role: $userRole");
+      print("ADMIN AUTH CHECK - Email: $userEmail, Role: $userRole");
 
-// ✅ TEMPORARY FIX: Fallback to email validation if your backend payload drops the role key
-      if (userRole.toUpperCase() == 'ADMIN' ||
-          userRole.toUpperCase() == 'ROLE_ADMIN' ||
-          userEmail == 'Saint@gmail.com') { // 👈 Hardcode your admin email here temporarily
-
+      // ✅ FALLBACK: Email checking validation until roles are fully serialized on Spring Security
+      if (userRole.toUpperCase() == 'ADMIN' || userRole.toUpperCase() == 'ROLE_ADMIN') {
         print("🟢 Admin Access Granted via Email/Role validation!");
+
+        // 🚀 FETCH LIVE RECORDS CONCURRENTLY FROM BACKEND REST ENDPOINTS
         final allBooks = await ApiService.fetchBooks();
+        final allUsers = await ApiService.fetchAllUsers();
+        final allOrders = await ApiService.fetchAllOrders();
 
         setState(() {
           _isAuthorizedAdmin = true;
+
+          // Store catalog list
           books = List<Map<String, dynamic>>.from(allBooks);
           _totalBooks = books.length;
+
+          // 👥 LIVE POPULATION: Clear out memory reference and save backend users array
+          users.clear();
+          users.addAll(List<Map<String, dynamic>>.from(allUsers));
+          _totalUsers = users.length;
+          orders.clear();
+          orders.addAll(List<Map<String, dynamic>>.from(allOrders));
+          _totalOrders = orders.length;
+
           _isLoading = false;
         });
       } else {
@@ -85,16 +104,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         _isLoading = false;
       });
     }
-  }
-
-  // Optional Helper alert to tell them why they are looking at an access-denied state
-  void _showAccessDeniedSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Access Denied: Admin role credentials missing 🛡️'),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
   }
 
   @override
@@ -193,7 +202,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       children: [
         _buildStatsBar([
           {'label': 'Total Books', 'value': '$_totalBooks'},
-          {'label': 'Revenue Metric', 'value': '₦${_totalRevenue.toInt()}'},
+          {'label': 'Total Users', 'value': '$_totalUsers'}, // ✅ Live summary user numbers
           {'label': 'Bestsellers', 'value': '${books.where((b) => b['isBestseller'] == true).length}'},
         ]),
         Padding(
@@ -279,10 +288,21 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                 onPressed: () => _confirmDelete(
                   context,
                   title: 'Delete "${book['title']}"?',
-                  onConfirm: () => setState(() {
-                    books.removeAt(index);
-                    _totalBooks = books.length;
-                  }),
+                  onConfirm: () async {
+                    // Pull the map ID (make sure the key matches your database 'bid' or 'id')
+                    final dynamic bookId = book['bid'] ?? book['id'];
+                    bool success = await ApiService.deleteBook(bookId);
+                    if (success) {
+                      _refreshCatalog();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Book deleted successfully! 🗑️'), backgroundColor: Colors.green),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Failed to delete book. Status 403/500'), backgroundColor: Colors.redAccent),
+                      );
+                    }
+                  },
                 ),
               ),
             ],
@@ -292,23 +312,219 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     );
   }
 
-  // ── REUSABLE BOTTOM FIELD BUILDER ──
-  Widget _sheetField(TextEditingController controller, String label, IconData icon, [TextInputType type = TextInputType.text]) {
-    return TextField(
-      controller: controller,
-      keyboardType: type,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF4F46E5)),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  // ══════════════════════════════════════════
+  // USERS TAB VIEW
+  // ══════════════════════════════════════════
+  Widget _buildUsersTab() {
+    return users.isEmpty
+        ? Center(
+      child: Text(
+        'No users registered yet 👥',
+        style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
       ),
+    )
+        : ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: users.length,
+      itemBuilder: (context, index) {
+        final client = users[index];
+
+        // Safely resolve fields directly out of your database rows maps
+        final String name = client['fullname'] ?? client['fullName'] ?? 'Unknown User';
+        final String email = client['email'] ?? 'No email bound';
+        final String role = client['role'] ?? client['userRole'] ?? 'USER';
+        final String address = client['shipping_address'] ?? client['address'] ?? 'No address registered';
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade100),
+          ),
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(14.0),
+            child: Row(
+              children: [
+                // Avatar circular layout circle icon holder
+                CircleAvatar(
+                  backgroundColor: const Color(0xFF4F46E5).withOpacity(0.1),
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : '👤',
+                    style: GoogleFonts.poppins(color: const Color(0xFF4F46E5), fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Account Information Layout
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Custom structural Badge Chip wrapper
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: role.toUpperCase() == 'ADMIN' || role.toUpperCase() == 'ROLE_ADMIN'
+                                  ? Colors.amber.shade50
+                                  : Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              role.toUpperCase().replaceAll('ROLE_', ''),
+                              style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: role.toUpperCase() == 'ADMIN' || role.toUpperCase() == 'ROLE_ADMIN'
+                                      ? Colors.amber.shade800
+                                      : Colors.blue.shade800
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        email,
+                        style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              address,
+                              style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  // ── STUB SECTIONS FOR COMPATIBILITY ──
-  Widget _buildUsersTab() => const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('User details managed dynamically via Spring Boot account context.')));
-  Widget _buildOrdersTab() => const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Incoming purchase receipts are managed inside standard inventory lines.')));
+  // ══════════════════════════════════════════
+  // ORDERS TAB VIEW
+  // ══════════════════════════════════════════
+  Widget _buildOrdersTab() {
+    return orders.isEmpty
+        ? Center(
+      child: Text(
+        'No checkout orders registered yet 📦',
+        style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
+      ),
+    )
+        : ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final package = orders[index];
 
+        final String orderId = package['id']?.toString() ?? '#0000';
+        final String tracking = package['tracking_number'] ?? 'No Tracking Assigned';
+        final String total = package['total_price']?.toString() ?? '0.00';
+        final String status = package['status'] ?? 'PENDING';
+        final String address = package['shipping_address'] ?? 'No Address Provided';
+        final String date = package['date'] ?? '';
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade100),
+          ),
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(14.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Order ID: $orderId',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: const Color(0xFF4F46E5)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: status.toUpperCase() == 'DELIVERED' || status.toUpperCase() == 'COMPLETED'
+                            ? Colors.green.shade50
+                            : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        status.toUpperCase(),
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: status.toUpperCase() == 'DELIVERED' || status.toUpperCase() == 'COMPLETED'
+                              ? Colors.green.shade700
+                              : Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                Text('Tracking: $tracking', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        address,
+                        style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Date: $date', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
+                    Text(
+                      '₦$total',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
   Widget _buildStatsBar(List<Map<String, dynamic>> stats) {
     return Container(
       color: Colors.white,
@@ -326,9 +542,169 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     );
   }
 
-  void _showAddBookSheet(BuildContext context) { /* Implemented to expand database lists accordingly */ }
-  void _showEditBookSheet(BuildContext context, Map<String, dynamic> book, int index) { /* Handles updating matching indices */ }
+  void _showAddBookSheet(BuildContext context) {
+    final titleController = TextEditingController();
+    final authorController = TextEditingController();
+    final priceController = TextEditingController();
+    final descController = TextEditingController();
+    final genreController = TextEditingController();
+    bool isBestseller = false;
 
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, top: 20, left: 20, right: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Add New Book 📚', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(controller: authorController, decoration: const InputDecoration(labelText: 'Author')),
+
+              // ✅ FORCE DECIMAL KEYBOARD ONLY
+              TextField(
+                controller: priceController,
+                decoration: const InputDecoration(labelText: 'Price', hintText: 'e.g. 3500.00'),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+
+              TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description')),
+              TextField(controller: genreController, decoration: const InputDecoration(labelText: 'Genre')),
+              CheckboxListTile(
+                title: Text('Is Bestseller?', style: GoogleFonts.poppins(fontSize: 14)),
+                value: isBestseller,
+                onChanged: (val) => setModalState(() => isBestseller = val ?? false),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), minimumSize: const Size(double.infinity, 45)),
+                onPressed: () async {
+                  // 🧼 CLEAN THE PRICE STRING: Remove currency signs, whitespace, and commas
+                  String priceText = priceController.text
+                      .replaceAll(RegExp(r'[^\d.]'), '') // Drops everything except digits and decimal dots
+                      .trim();
+
+                  // Parse cleanly, fallback to 0.0 if field was left blank
+                  double finalPrice = double.tryParse(priceText) ?? 0.0;
+
+                  final data = {
+                    "title": titleController.text,
+                    "author": authorController.text,
+                    "price": finalPrice, // ✅ Transmits cleansed price decimal double value safely
+                    "description": descController.text,
+                    "genre": genreController.text,
+                    "bestseller": isBestseller, // ✅ Synced JSON key matching Jackson serialization rules
+                    "stock": 10, // Default inventory level allocation
+                    "coverUrl": ""
+                  };
+
+                  bool success = await ApiService.addBook(data);
+                  if (success) {
+                    Navigator.pop(context);
+                    _refreshCatalog(); // Refresh live state catalog array grid
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('New book added to system catalog! 📚🎉'), backgroundColor: Colors.green),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to save new book payload.'), backgroundColor: Colors.redAccent),
+                    );
+                  }
+                },
+                child: Text('Save Book', style: GoogleFonts.poppins(color: Colors.white)),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditBookSheet(BuildContext context, Map<String, dynamic> book, int index) {
+    // 1. Ensure the initial price doesn't have accidental whitespace
+    final titleController = TextEditingController(text: book['title']);
+    final authorController = TextEditingController(text: book['author']);
+    final priceController = TextEditingController(text: book['price']?.toString().trim());
+    final descController = TextEditingController(text: book['description']);
+    final genreController = TextEditingController(text: book['genre']);
+    bool isBestseller = book['isBestseller'] ?? false;
+    final dynamic bookId = book['bid'] ?? book['id'];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, top: 20, left: 20, right: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Edit Book Details 📝', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(controller: authorController, decoration: const InputDecoration(labelText: 'Author')),
+
+              // ✅ ENFORCE DECIMAL KEYBOARD TYPE ONLY
+              TextField(
+                controller: priceController,
+                decoration: const InputDecoration(labelText: 'Price', hintText: 'e.g. 4500.00'),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+
+              TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description')),
+              TextField(controller: genreController, decoration: const InputDecoration(labelText: 'Genre')),
+              CheckboxListTile(
+                title: Text('Is Bestseller?', style: GoogleFonts.poppins(fontSize: 14)),
+                value: isBestseller,
+                onChanged: (val) => setModalState(() => isBestseller = val ?? false),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), minimumSize: const Size(double.infinity, 45)),
+                onPressed: () async {
+                  // 🧼 CLEAN THE STRING: Remove currency signs, whitespace, and commas
+                  String priceText = priceController.text
+                      .replaceAll(RegExp(r'[^\d.]'), '') // Removes everything except digits and decimal dots
+                      .trim();
+
+                  // Parse cleanly, fallback to original price if parse fails entirely
+                  double finalPrice = double.tryParse(priceText) ?? (book['price'] as double? ?? 0.0);
+
+                  final data = {
+                    "title": titleController.text,
+                    "author": authorController.text,
+                    "price": finalPrice, // 👈 Sends the sanitized decimal values safely
+                    "description": descController.text,
+                    "genre": genreController.text,
+                    "bestseller": isBestseller, // Synced Jackson key mapping
+                    "stock": book['stock'] ?? 10,
+                    "coverUrl": book['coverUrl'] ?? ""
+                  };
+
+                  bool success = await ApiService.updateBook(bookId, data);
+                  if (success) {
+                    Navigator.pop(context);
+                    _refreshCatalog();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Book properties saved cleanly! 💾'), backgroundColor: Colors.green),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not sync details updates.'), backgroundColor: Colors.redAccent),
+                    );
+                  }
+                },
+                child: Text('Update Details', style: GoogleFonts.poppins(color: Colors.white)),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
   void _confirmDelete(BuildContext context, {required String title, required VoidCallback onConfirm}) {
     showDialog(
       context: context,
