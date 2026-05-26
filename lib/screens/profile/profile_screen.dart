@@ -23,7 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const menuItems = [
     {'icon': Icons.location_on_outlined, 'label': 'Shipping Address'},
     {'icon': Icons.credit_card_outlined, 'label': 'Payment Methods'},
-    {'icon': Icons.lock_outlined, 'label': 'Update Profile'},
+    {'icon': Icons.lock_outlined, 'label': 'Update Password'},
     {'icon': Icons.admin_panel_settings_outlined, 'label': 'Admin Panel'},
   ];
 
