@@ -41,23 +41,21 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     _verifyAccessAndLoadStats();
   }
 
-  // 🔐 VERIFY AUTH STATUS AND FETCH CATALOG DETAILS
+
   Future<void> _verifyAccessAndLoadStats() async {
     try {
-      // 1. Fetch user profile from authorization token context
+
       final profile = await ApiService.fetchUserProfile();
 
-      /// Extract properties safely
       String userRole = profile?['role']?.toString() ?? 'USER';
       String userEmail = profile?['email']?.toString() ?? '';
 
       print("ADMIN AUTH CHECK - Email: $userEmail, Role: $userRole");
 
-      // ✅ FALLBACK: Email checking validation until roles are fully serialized on Spring Security
+
       if (userRole.toUpperCase() == 'ADMIN' || userRole.toUpperCase() == 'ROLE_ADMIN') {
         print("🟢 Admin Access Granted via Email/Role validation!");
 
-        // 🚀 FETCH LIVE RECORDS CONCURRENTLY FROM BACKEND REST ENDPOINTS
         final allBooks = await ApiService.fetchBooks();
         final allUsers = await ApiService.fetchAllUsers();
         final allOrders = await ApiService.fetchAllOrders();
@@ -65,11 +63,10 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         setState(() {
           _isAuthorizedAdmin = true;
 
-          // Store catalog list
           books = List<Map<String, dynamic>>.from(allBooks);
           _totalBooks = books.length;
 
-          // 👥 LIVE POPULATION: Clear out memory reference and save backend users array
+
           users.clear();
           users.addAll(List<Map<String, dynamic>>.from(allUsers));
           _totalUsers = users.length;
@@ -114,7 +111,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    // ⏳ LOADING UI STATE
+
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Color(0xFFF3F4F6),
@@ -122,7 +119,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       );
     }
 
-    // 🛑 ACCESS DENIED UI STATE (RESTRICTION BLOCK)
     if (!_isAuthorizedAdmin) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -162,7 +158,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       );
     }
 
-    // 🟢 AUTHENTICATED ADMIN ACCESS CARD VIEW
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       appBar: AppBar(
@@ -194,9 +189,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     );
   }
 
-  // ══════════════════════════════════════════
-  // BOOKS TAB VIEW
-  // ══════════════════════════════════════════
   Widget _buildBooksTab() {
     return Column(
       children: [
@@ -289,7 +281,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                   context,
                   title: 'Delete "${book['title']}"?',
                   onConfirm: () async {
-                    // Pull the map ID (make sure the key matches your database 'bid' or 'id')
+
                     final dynamic bookId = book['bid'] ?? book['id'];
                     bool success = await ApiService.deleteBook(bookId);
                     if (success) {
@@ -312,9 +304,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     );
   }
 
-  // ══════════════════════════════════════════
-  // USERS TAB VIEW
-  // ══════════════════════════════════════════
   Widget _buildUsersTab() {
     return users.isEmpty
         ? Center(
@@ -329,7 +318,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       itemBuilder: (context, index) {
         final client = users[index];
 
-        // Safely resolve fields directly out of your database rows maps
         final String name = client['fullname'] ?? client['fullName'] ?? 'Unknown User';
         final String email = client['email'] ?? 'No email bound';
         final String role = client['role'] ?? client['userRole'] ?? 'USER';
@@ -347,7 +335,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             padding: const EdgeInsets.all(14.0),
             child: Row(
               children: [
-                // Avatar circular layout circle icon holder
+
                 CircleAvatar(
                   backgroundColor: const Color(0xFF4F46E5).withOpacity(0.1),
                   child: Text(
@@ -357,7 +345,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                 ),
                 const SizedBox(width: 14),
 
-                // Account Information Layout
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +359,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          // Custom structural Badge Chip wrapper
+
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
@@ -425,9 +412,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
     );
   }
 
-  // ══════════════════════════════════════════
-  // ORDERS TAB VIEW
-  // ══════════════════════════════════════════
   Widget _buildOrdersTab() {
     return orders.isEmpty
         ? Center(
@@ -563,7 +547,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
               TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
               TextField(controller: authorController, decoration: const InputDecoration(labelText: 'Author')),
 
-              // ✅ FORCE DECIMAL KEYBOARD ONLY
               TextField(
                 controller: priceController,
                 decoration: const InputDecoration(labelText: 'Price', hintText: 'e.g. 3500.00'),
@@ -581,29 +564,28 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), minimumSize: const Size(double.infinity, 45)),
                 onPressed: () async {
-                  // 🧼 CLEAN THE PRICE STRING: Remove currency signs, whitespace, and commas
+
                   String priceText = priceController.text
-                      .replaceAll(RegExp(r'[^\d.]'), '') // Drops everything except digits and decimal dots
+                      .replaceAll(RegExp(r'[^\d.]'), '')
                       .trim();
 
-                  // Parse cleanly, fallback to 0.0 if field was left blank
                   double finalPrice = double.tryParse(priceText) ?? 0.0;
 
                   final data = {
                     "title": titleController.text,
                     "author": authorController.text,
-                    "price": finalPrice, // ✅ Transmits cleansed price decimal double value safely
+                    "price": finalPrice,
                     "description": descController.text,
                     "genre": genreController.text,
-                    "bestseller": isBestseller, // ✅ Synced JSON key matching Jackson serialization rules
-                    "stock": 10, // Default inventory level allocation
+                    "bestseller": isBestseller,
+                    "stock": 10,
                     "coverUrl": ""
                   };
 
                   bool success = await ApiService.addBook(data);
                   if (success) {
                     Navigator.pop(context);
-                    _refreshCatalog(); // Refresh live state catalog array grid
+                    _refreshCatalog();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('New book added to system catalog! 📚🎉'), backgroundColor: Colors.green),
                     );
@@ -624,7 +606,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   void _showEditBookSheet(BuildContext context, Map<String, dynamic> book, int index) {
-    // 1. Ensure the initial price doesn't have accidental whitespace
+
     final titleController = TextEditingController(text: book['title']);
     final authorController = TextEditingController(text: book['author']);
     final priceController = TextEditingController(text: book['price']?.toString().trim());
@@ -646,7 +628,6 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
               TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
               TextField(controller: authorController, decoration: const InputDecoration(labelText: 'Author')),
 
-              // ✅ ENFORCE DECIMAL KEYBOARD TYPE ONLY
               TextField(
                 controller: priceController,
                 decoration: const InputDecoration(labelText: 'Price', hintText: 'e.g. 4500.00'),
@@ -664,21 +645,20 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), minimumSize: const Size(double.infinity, 45)),
                 onPressed: () async {
-                  // 🧼 CLEAN THE STRING: Remove currency signs, whitespace, and commas
+
                   String priceText = priceController.text
-                      .replaceAll(RegExp(r'[^\d.]'), '') // Removes everything except digits and decimal dots
+                      .replaceAll(RegExp(r'[^\d.]'), '')
                       .trim();
 
-                  // Parse cleanly, fallback to original price if parse fails entirely
                   double finalPrice = double.tryParse(priceText) ?? (book['price'] as double? ?? 0.0);
 
                   final data = {
                     "title": titleController.text,
                     "author": authorController.text,
-                    "price": finalPrice, // 👈 Sends the sanitized decimal values safely
+                    "price": finalPrice,
                     "description": descController.text,
                     "genre": genreController.text,
-                    "bestseller": isBestseller, // Synced Jackson key mapping
+                    "bestseller": isBestseller,
                     "stock": book['stock'] ?? 10,
                     "coverUrl": book['coverUrl'] ?? ""
                   };

@@ -29,17 +29,11 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-  // Pure state mathematical properties
-  // 🟢 FIXED: Target 'cartItems' instead of the non-existent 'orders' variable
   double get subtotal {
     return cartItems.fold(0.0, (sum, item) {
-      // Extract the nested 'books' map safely from your CartItems backend entity structure
       final book = item['books'] as Map<String, dynamic>?;
-
-      // Extract values cleanly, falling back to 0 or 0.0 if missing to prevent crashes
       final double price = ((book?['price'] ?? 0.0) as num).toDouble();
       final int quantity = (item['quantity'] ?? 0) as int;
-
       return sum + (price * quantity);
     });
   }
@@ -83,13 +77,14 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildCartItem(int index) {
     final item = cartItems[index];
-    // 🟢 FIXED: Safely extract the nested book object to avoid Null sub-type compilation errors
     final book = item['books'] as Map<String, dynamic>?;
 
     final String title = book?['title'] ?? 'Unknown Title';
     final String author = book?['author'] ?? 'Unknown Author';
     final String coverUrl = book?['coverUrl'] ?? book?['cover_url'] ?? '';
     final double price = ((book?['price'] ?? 0.0) as num).toDouble();
+    final int quantity = (item['quantity'] ?? 0) as int;
+    final int bookId = book?['bid'] ?? 0;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -100,7 +95,7 @@ class _CartScreenState extends State<CartScreen> {
       ),
       child: Row(
         children: [
-          // Dynamic Cover Network Streamer
+
           Container(
             width: 56,
             height: 72,
@@ -127,7 +122,6 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(width: 12),
 
-          // Book Meta Data Fields
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,31 +142,45 @@ class _CartScreenState extends State<CartScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 8),
 
-          // Interactivity Counters
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.grey, size: 20),
-                onPressed: () async {
-                  if (item['quantity'] > 1) {
-                    bool success = await ApiService.updateCartQuantity(item['id'], item['quantity'] - 1);
+          Material(
+            color: Colors.transparent,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.grey, size: 22),
+                  splashRadius: 20,
+                  onPressed: bookId == 0 ? null : () async {
+                    if (quantity > 1) {
+                      bool success = await ApiService.updateCartQuantity(bookId, quantity - 1);
+                      if (success) _loadCartData();
+                    } else {
+                      bool success = await ApiService.removeFromCart(bookId);
+                      if (success) _loadCartData();
+                    }
+                  },
+                ),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  child: Center(
+                    child: Text(
+                      '$quantity',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline, color: Color(0xFF4F46E5), size: 22),
+                  splashRadius: 20,
+                  onPressed: bookId == 0 ? null : () async {
+                    bool success = await ApiService.updateCartQuantity(bookId, quantity + 1);
                     if (success) _loadCartData();
-                  } else {
-                    bool success = await ApiService.removeFromCart(item['id']);
-                    if (success) _loadCartData();
-                  }
-                },
-              ),
-              Text('${item['quantity']}', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline, color: Color(0xFF4F46E5), size: 20),
-                onPressed: () async {
-                  bool success = await ApiService.updateCartQuantity(item['id'], item['quantity'] + 1);
-                  if (success) _loadCartData();
-                },
-              ),
-            ],
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -211,7 +219,6 @@ class _CartScreenState extends State<CartScreen> {
                     setState(() => isLoading = false);
                     if (success) {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
-
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Order placed successfully! 🚀 Check your history.', style: GoogleFonts.poppins()),
@@ -219,7 +226,7 @@ class _CartScreenState extends State<CartScreen> {
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
-                      _loadCartData(); // Refreshes view context cleanly
+                      _loadCartData();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

@@ -113,19 +113,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 16),
                       _buildSectionTitle('📚 Browse Genres'),
                       const SizedBox(height: 10),
-                      _buildGenreChips(), // 👈 Scrolls Horizontally Perfectly
+                      _buildGenreChips(),
                       const SizedBox(height: 20),
 
                       if (bestsellers.isNotEmpty) ...[
                         _buildSectionTitle('🔥 Bestsellers'),
                         const SizedBox(height: 12),
-                        _buildBestsellerRow(), // 👈 Scrolls Horizontally Perfectly
+                        _buildBestsellerRow(),
                         const SizedBox(height: 20),
                       ],
 
                       _buildSectionTitle(_searchController.text.isEmpty ? '✨ All Books' : '🔍 Search Results'),
                       const SizedBox(height: 12),
-                      _buildAllBooksGrid(), // 👈 Embedded safely inside vertical container view block
+                      _buildAllBooksGrid(),
                     ],
                   ),
                 ),
